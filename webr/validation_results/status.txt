@@ -1,5 +1,0 @@
-Status: passed
-Date: 2026-09-30
-R version 4.6.1 (2026-06-24 ucrt)
-26 presets; all 6 default scripts match UI settings; reproducibility; matrix OLS; FWL; population moments; delta gradient; invalid inputs
-Native PNG plots are separate from browser UI verification.
