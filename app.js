@@ -4,6 +4,7 @@ import { renderMathText, renderFieldLabel, renderModel } from './math.js';
 import { guidance, parameterChanges, changeKind } from './guidance.js';
 import { journeys, journeyParameters } from './journeys.js';
 import { figureDescription } from './figures.js';
+import { preparation } from './startup.js';
 
 const $ = id => document.getElementById(id);
 const STORAGE = 'econometrics-webr-2026-v2';
@@ -25,6 +26,7 @@ let engine = null, generation = 0, ready = false, busy = false, lastRun = null, 
 let runtimeVersion = '', rVersion = '';
 let loaded = false;
 let comparisonTemplate = '';
+let preparationController = null;
 const downloads = [];
 
 function persist() {
@@ -51,8 +53,10 @@ function setBusy(value) {
   $('run').disabled = value || !ready || !loaded;
   $('run-code').disabled = value || !ready || !loaded || state.mode !== 'code';
   $('resample').disabled = value || !ready || !loaded || state.mode === 'code' || !state.latest || state.latest.mode !== 'settings' || isPending();
-  $('run').textContent = value ? '計算中…' : 'この設定で実行';
-  $('run-code').textContent = value ? '計算中…' : 'このコードで実行';
+  const waiting = !ready || !loaded;
+  const waitingLabel = preparation.failed ? '準備後に実行' : '準備中…';
+  $('run').textContent = value ? '計算中…' : waiting ? waitingLabel : 'この設定で実行';
+  $('run-code').textContent = value ? '計算中…' : waiting ? waitingLabel : 'このコードで実行';
   for (const el of document.querySelectorAll('#lesson-select, #fields input, #fields select, #scenario, #reset-settings, #apply-settings, #use-settings, #comparison-view')) el.disabled = value;
   $('edit-generated-code').disabled = value || !loaded;
   $('code').readOnly = value;
@@ -61,7 +65,7 @@ function setBusy(value) {
   $('restore-baseline').disabled = value || !state.baseline;
   for (const button of document.querySelectorAll('.journey-run')) {
     button.disabled = value || !ready || !loaded;
-    button.textContent = value ? '計算中…' : Number(button.dataset.step) === 0 ? '最初の調査を実行' : 'この条件で実行';
+    button.textContent = value ? '計算中…' : waiting ? waitingLabel : Number(button.dataset.step) === 0 ? '最初の調査を実行' : 'この条件で実行';
   }
   for (const input of document.querySelectorAll('.journey-input')) input.disabled = value;
 }
@@ -394,6 +398,7 @@ function renderJourney() {
   const next = lessons[lessons.indexOf(lesson) + 1];
   $('next-lesson').hidden = !next;
   if (next) { $('next-lesson').href = `#${next.id}`; $('next-lesson').textContent = `${next.short}へ →`; }
+  preparation.mount();
   setBusy(busy);
 }
 
@@ -539,14 +544,35 @@ async function compareRuns(record, reference, shelter, localEngine, token) {
   return {referenceNumber:reference.number, images, axesCSV, histogramViews};
 }
 
-async function startEngine() {
+async function startEngine(preserveElapsed = false) {
   const token = ++generation;
+  preparationController?.abort();
+  const controller = new AbortController();
+  preparationController = controller;
   const old = engine; engine = null; ready = false;
   if (old) { try { old.close(); } catch { /* A previously closed worker. */ } }
+  preparation.begin(loaded ? 'runtime' : 'materials', {preserveElapsed});
+  preparation.mount();
   setBusy(false);
-  status('Rを準備中…');
   $('restart').disabled = true;
   try {
+    if (location.protocol === 'file:') throw new Error('serve.pyを起動し，http://127.0.0.1:8765/ から開く。起動手順はREADME.mdを参照。');
+    if (!loaded) {
+      const files = [...lessons.map(item => [item.id, item.file]), ['comparison', 'r/compare_runs.R']];
+      const texts = await Promise.all(files.map(async ([id, file]) => {
+        const response = await fetch(file, {signal: controller.signal});
+        if (!response.ok) throw new Error(`${file}: HTTP ${response.status}`);
+        return [id, (await response.text()).replace(/\r\n?/g, '\n')];
+      }));
+      if (token !== generation) return;
+      for (const [id, text] of texts) {
+        if (id === 'comparison') comparisonTemplate = text;
+        else templates.set(id, text);
+      }
+      loaded = true;
+      setMode(states.get(lesson.id).mode);
+    }
+    preparation.stage('runtime');
     const { WebR } = await import(`${WEBR_BASE}webr.mjs`);
     if (token !== generation) return;
     const next = new WebR({baseUrl: WEBR_BASE, interactive:false});
@@ -555,14 +581,16 @@ async function startEngine() {
     if (token !== generation) return;
     runtimeVersion = String(next.version || '0.6.0');
     rVersion = await next.evalRString('R.version.string');
+    if (token !== generation) return;
     ready = true;
     $('versions').textContent = `WebR ${runtimeVersion} · ${rVersion}`;
-    status('Rの準備完了', 'ready');
+    preparation.finish();
     $('error').hidden = true;
   } catch (error) {
     if (token !== generation) return;
-    status('Rの読み込みに失敗', 'error');
-    showError(`Rを読み込めなかった。インターネット接続を確認して「Rを再起動」を押す。\n${error.message || error}`);
+    controller.abort();
+    if (engine) { try { engine.close(); } catch { /* Release a failed worker. */ } engine = null; }
+    preparation.fail(error);
   } finally {
     if (token === generation) { $('restart').disabled = false; setBusy(false); }
   }
@@ -632,6 +660,7 @@ async function run(options = {}) {
     const {images, comparison, ...historyRecord} = record;
     state.history.push(historyRecord); if (state.history.length > 8) state.history.shift();
     renderResults(); renderHistory(); updateChanges();
+    preparation.dismiss();
     if (guided) renderJourney();
     status('実行完了', 'ready');
     const resultTarget = guided ? $(`journey-output-${options.journeyIndex}`) : $('results-title');
@@ -770,20 +799,5 @@ const actionHelp = {
 };
 for (const [id, text] of Object.entries(actionHelp)) addButtonHelp($(id), text);
 renderLesson();
-try {
-  if (location.protocol === 'file:') throw new Error('serve.pyを起動し，http://127.0.0.1:8765/ から開く。起動手順はREADME.mdを参照。');
-  await Promise.all([...lessons.map(async item => {
-    const response = await fetch(item.file);
-    if (!response.ok) throw new Error(`${item.file}: HTTP ${response.status}`);
-    templates.set(item.id, (await response.text()).replace(/\r\n?/g, '\n'));
-  }), (async () => {
-    const response = await fetch('r/compare_runs.R');
-    if (!response.ok) throw new Error(`r/compare_runs.R: HTTP ${response.status}`);
-    comparisonTemplate = (await response.text()).replace(/\r\n?/g, '\n');
-  })()]);
-  loaded = true; setMode(states.get(lesson.id).mode);
-  await startEngine();
-} catch (error) {
-  status('教材の読み込みに失敗', 'error');
-  showError(String(error.message || error));
-}
+preparation.setRetry(() => startEngine());
+await startEngine(true);

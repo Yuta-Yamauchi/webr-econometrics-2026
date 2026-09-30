@@ -25,6 +25,8 @@ Windowsでは `py -3 serve.py` または同梱の `start.ps1`，macOS・Linuxで
 
 WebR本体は公式CDNから読み込むため，起動時にインターネット接続を使います。計算はブラウザー内で実行し，学生側のRのインストールは不要です。HTMLはHTTP・HTTPSで開きます。
 
+実行ボタンの直前に，教材の読み込み・Rの準備・実行可能の3段階と経過時間を表示します。準備が終わると所要時間と実行ボタンを表示し，最初の実行後に準備表示を閉じます。20秒以上待っている場合と読み込みに失敗した場合は，「準備をやり直す」を表示します。Rの準備をやり直しても，実行済みの図と設定は残ります。画面用JavaScriptの取得に失敗した場合の再試行では，ページを読み込み直します。
+
 ## 操作
 
 各テーマを4段階のノートブックとして表示します。
@@ -64,6 +66,7 @@ WebR本体は公式CDNから読み込むため，起動時にインターネッ�
 | ファイル | 内容 |
 |---|---|
 | `index.html`・`app.css`・`app.js` | 画面・WebR実行・ファイル保存 |
+| `bootstrap.js`・`startup.js` | 読み込みの段階・経過時間・再試行の表示 |
 | `tooltips.js` | マウス・キーボード・タッチによる説明表示 |
 | `math.js`・`vendor/katex/` | TeX形式の数式表示・同梱フォント |
 | `journeys.js` | 6テーマ・24段階の状況設定・18の条件変更 |
@@ -102,6 +105,8 @@ Rファイルは追加パッケージなしで通常のR・RStudioでも実行�
 Cross-Origin-Opener-Policy: same-origin
 Cross-Origin-Embedder-Policy: require-corp
 ```
+
+今回の読み込み表示を既存のGitHub Pages版へ反映する場合は，`index.html`・`app.css`・`app.js`を更新し，同じディレクトリに`bootstrap.js`・`startup.js`を追加します。`webr_loading_update.zip`には，公開先へ置く5ファイルを格納しています。
 
 ## 参照文献・参照範囲
 

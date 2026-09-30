@@ -42,6 +42,31 @@ p { margin-bottom: 16px; }
 .status-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: #9d6b17; flex: none; }
 .status-dot.ready { background: #277454; }
 .status-dot.error { background: #a32824; }
+.status-dot.loading { background: transparent; width: 13px; height: 13px; border: 2px solid #d4d9e6; border-top-color: var(--accent); animation: startup-spin 1s linear infinite; }
+.startup { padding: 18px 20px; margin: 20px 0 14px; background: #f3f4f8; border-left: 3px solid var(--accent); border-radius: 0 5px 5px 0; }
+.startup-heading { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+#startup-title { font-size: 18px; font-weight: 600; margin: 0; }
+#startup-elapsed { margin-left: auto; color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+.startup-mark { width: 17px; height: 17px; flex: 0 0 17px; border: 2px solid #d4d9e6; border-top-color: var(--accent); border-radius: 50%; animation: startup-spin 1s linear infinite; }
+.startup-steps { display: flex; flex-wrap: wrap; gap: 9px 22px; list-style: none; padding: 0; margin: 16px 0 10px; font-size: 16px; color: var(--muted); }
+.startup-steps li { display: flex; align-items: center; gap: 8px; }
+.startup-steps li > span { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border: 1px solid #b9becb; border-radius: 50%; font-size: 14px; }
+.startup-steps .current { color: var(--accent); font-weight: 600; }
+.startup-steps .current > span { color: white; background: var(--accent); border-color: var(--accent); }
+.startup-steps .complete { color: #277454; }
+.startup-steps .complete > span { border-color: #277454; }
+#startup-message, .startup-slow { margin: 10px 0 0; font-size: 17px; line-height: 1.75; }
+#startup-retry { margin-top: 14px; font-size: 17px; }
+#startup-detail { margin-top: 14px; }
+#startup-detail summary { padding: 10px 0; font-size: 16px; }
+.startup[data-phase="ready"] { background: #f0f5ef; border-color: #277454; color: #277454; padding: 12px 16px; }
+.startup[data-phase="error"] { background: #fff3ef; border-color: #a32824; }
+.startup[data-phase="ready"] .startup-mark, .startup[data-phase="error"] .startup-mark { animation: none; border: 0; height: auto; line-height: 1; border-radius: 0; }
+.startup[data-phase="ready"] .startup-mark::before { content: '✓'; }
+.startup[data-phase="error"] .startup-mark::before { content: '!'; color: #a32824; font-weight: 700; }
+.startup-copy { color: var(--accent); font-size: 17px; margin: 14px 0 0; }
+@keyframes startup-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .startup-mark, .status-dot.loading { animation: none; } }
 .lesson-nav { max-width: 984px; margin: 0 auto 22px; padding: 0 12px; display: flex; align-items: center; gap: 10px 18px; flex-wrap: wrap; }
 .lesson-nav label { font-size: 16px; color: var(--muted); }
 .lesson-nav select { flex: 1; max-width: 520px; min-width: 260px; }
@@ -214,6 +239,9 @@ body.busy #run, body.busy #run-code { cursor: progress; }
   footer { padding-left: 0; }
 }
 @media (max-width: 520px) {
+  .startup { padding: 15px 14px; }
+  .startup-steps { flex-direction: column; gap: 10px; }
+  #startup-elapsed { margin-left: 27px; flex-basis: 100%; }
   h1 { font-size: 24px; }
   .intro h2 { font-size: 27px; }
   .notebook-sheet { margin-right: 10px; margin-left: 10px; padding-right: 17px; padding-left: 17px; }
@@ -249,7 +277,7 @@ body.busy #run, body.busy #run-code { cursor: progress; }
 @media print {
   :root { font-size: 12px; }
   body, .notebook-sheet { background: #fff; }
-  .site-header, .lesson-nav, .setup, .code-cell, footer, .exports, button, .context-tooltip, .skip { display: none !important; }
+  .site-header, .lesson-nav, .setup, .code-cell, footer, .exports, button, .context-tooltip, .skip, .startup { display: none !important; }
   .notebook-sheet { border: 0; padding: 0; margin: 0; max-width: none; }
   .notebook-cell { display: block; border: 0; padding: 0; }
   .cell-index, #history-details, .result-summary { display: none; }

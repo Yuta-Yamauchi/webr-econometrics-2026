@@ -6,14 +6,14 @@
   <meta name="theme-color" content="#f3f0e9">
   <title>確率モデルのシミュレーション | 上級計量経済II</title>
   <link rel="stylesheet" href="vendor/katex/katex.min.css">
-  <link rel="stylesheet" href="app.css">
-  <script type="module" src="app.js"></script>
+  <link rel="stylesheet" href="app.css?v=20260930-loading">
+  <script type="module" src="bootstrap.js"></script>
 </head>
 <body>
   <a href="#main" class="skip">本文へ</a>
   <header class="site-header">
     <div><p class="eyebrow">上級計量経済II · 2026</p><h1>確率モデルのシミュレーション</h1></div>
-    <div class="runtime"><span class="status-dot" id="status-dot"></span><span id="status" role="status" aria-live="polite">教材を読み込み中</span></div>
+    <div class="runtime"><span class="status-dot loading" id="status-dot"></span><span id="status" role="status" aria-live="polite">教材を読み込み中</span></div>
   </header>
   <nav class="lesson-nav" aria-label="シミュレーションの選択"><label for="lesson-select">シミュレーション</label><select id="lesson-select"></select><span id="lesson-position"></span></nav>
   <main id="main" class="notebook-sheet">
@@ -25,6 +25,20 @@
         <p id="assumptions" class="model-text"></p>
       </details>
     </section>
+    <div id="startup-home">
+      <section id="startup" class="startup" data-phase="materials" aria-labelledby="startup-title">
+        <div class="startup-heading"><span class="startup-mark" aria-hidden="true"></span><p id="startup-title" tabindex="-1">教材を読み込み中</p><span id="startup-elapsed" aria-live="off">経過 0秒</span></div>
+        <ol id="startup-steps" class="startup-steps" aria-label="実行までの準備">
+          <li class="current" aria-current="step"><span aria-hidden="true">1</span>教材の読み込み</li>
+          <li><span aria-hidden="true">2</span>Rの準備</li>
+          <li><span aria-hidden="true">3</span>実行可能</li>
+        </ol>
+        <p id="startup-message">準備が終わると，下のボタンで実行できる。</p>
+        <p id="startup-slow" class="startup-slow" hidden>読み込みに時間がかかっている。接続を確認し，進まない場合は準備をやり直す。</p>
+        <button id="startup-retry" type="button" class="secondary" hidden>準備をやり直す</button>
+        <details id="startup-detail" hidden><summary>エラーの詳細</summary><pre id="startup-error"></pre></details>
+      </section>
+    </div>
     <div id="journey" aria-label="順に試すシミュレーション"></div>
     <div id="journey-next" class="journey-next" hidden><p id="journey-next-text"></p><a id="next-lesson"></a></div>
     <details id="free-lab" class="free-lab">
@@ -41,7 +55,8 @@
           <p id="pending-status" class="pending-status"></p>
           <p id="changes-label" class="help"></p><ul id="parameter-changes" class="change-list"></ul>
         </div>
-        <div class="actions"><button type="button" id="run" class="primary" disabled>この設定で実行</button></div>
+        <p class="startup-copy" data-startup-copy>教材を読み込み中</p>
+        <div class="actions"><button type="button" id="run" class="primary" disabled>準備中…</button></div>
         <p id="run-help" class="help"></p>
         <details><summary>設定を戻す</summary><button type="button" id="reset-settings" class="quiet">初期値に戻す</button><button id="restore-baseline" type="button" class="quiet">比較相手の設定に戻す</button></details>
         </div>
@@ -98,7 +113,8 @@
             <button type="button" id="apply-settings" class="secondary">現在の設定からコードを作り直す</button>
             <label for="code">編集するRコード <span class="help">Ctrl / ⌘ + Enterで実行</span></label>
             <textarea id="code" spellcheck="false" wrap="off" rows="20"></textarea>
-            <div class="actions"><button type="button" id="use-settings" class="secondary">数値の設定に戻る</button><button type="button" id="run-code" class="primary" disabled>このコードで実行</button></div>
+            <p class="startup-copy" data-startup-copy>教材を読み込み中</p>
+            <div class="actions"><button type="button" id="use-settings" class="secondary">数値の設定に戻る</button><button type="button" id="run-code" class="primary" disabled>準備中…</button></div>
           </div>
         </details>
         <details id="output-details" hidden><summary>Rの出力</summary><pre id="output">未実行</pre></details>
