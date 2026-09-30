@@ -3,19 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#005a85">
-  <title>確率モデルの実験室 | 上級計量経済II</title>
+  <meta name="theme-color" content="#f3f0e9">
+  <title>確率モデルのシミュレーション | 上級計量経済II</title>
+  <link rel="stylesheet" href="vendor/katex/katex.min.css">
   <link rel="stylesheet" href="app.css">
   <script type="module" src="app.js"></script>
 </head>
 <body>
   <a href="#main" class="skip">本文へ</a>
   <header class="site-header">
-    <div><p class="eyebrow">上級計量経済II · 2026</p><h1>確率モデルの実験室</h1></div>
+    <div><p class="eyebrow">上級計量経済II · 2026</p><h1>確率モデルのシミュレーション</h1></div>
     <div class="runtime"><span class="status-dot" id="status-dot"></span><span id="status" role="status" aria-live="polite">教材の読み込み中</span><button type="button" id="restart" class="quiet">Rを再起動</button></div>
   </header>
-  <main id="main">
-    <nav id="lesson-nav" class="lesson-nav" aria-label="実験の選択"></nav>
+  <nav id="lesson-nav" class="lesson-nav" aria-label="実験の選択"></nav>
+  <main id="main" class="notebook-sheet">
     <section class="intro" aria-labelledby="lesson-title">
       <p class="eyebrow" id="course"></p><h2 id="lesson-title"></h2>
       <p id="intro"></p><span class="tag">仮想データ</span>
@@ -24,9 +25,20 @@
         <p id="assumptions" class="model-text"></p>
       </details>
     </section>
-    <div class="workbench">
-      <section class="setup panel" aria-labelledby="setup-title">
-        <h2 id="setup-title">シミュレーション設定</h2>
+      <section class="notebook-cell setup" aria-labelledby="setup-title">
+        <span class="cell-index" aria-hidden="true">01</span>
+        <div class="cell-body">
+        <h2 id="setup-title">設定</h2>
+        <section id="guide" class="guide" aria-labelledby="guide-title">
+          <h3 id="guide-title">試すこと</h3>
+          <p id="guide-question"></p>
+          <ol class="guide-steps" aria-label="試す順序">
+            <li id="guide-step-1">基準を実行</li><li id="guide-step-2">設定を変更</li><li id="guide-step-3">図を比較</li>
+          </ol>
+          <p id="guide-instruction" class="help"></p>
+          <div id="guide-primary" class="guide-actions"></div>
+          <details><summary>別の試し方</summary><div id="guide-alternatives" class="guide-actions"></div></details>
+        </section>
         <label for="scenario">設定メニュー</label>
         <select id="scenario"></select>
         <p id="scenario-description" class="help"></p>
@@ -35,23 +47,41 @@
           <button id="mode-code" type="button" aria-pressed="false">Rコードを編集</button>
         </div>
         <form id="settings-form"><div id="fields" class="fields"></div><button type="button" id="reset-settings" class="quiet">初期設定へ戻す</button></form>
-        <div id="code-panel" hidden>
-          <p class="help">この欄のコード全体を実行する。設定欄の値を使うときは，設定をコードへ反映する。</p>
-          <button type="button" id="apply-settings" class="secondary">設定をコードへ反映</button>
-          <label for="code">Rコード <span class="help">Ctrl / ⌘ + Enterで実行</span></label>
-          <textarea id="code" spellcheck="false" wrap="off" rows="26"></textarea>
+        <div id="change-summary" class="change-summary" aria-live="polite">
+          <p id="pending-status" class="pending-status"></p>
+          <p id="changes-label" class="help"></p><ul id="parameter-changes" class="change-list"></ul>
         </div>
-        <div class="actions"><button type="button" id="run" class="primary" disabled>実行</button><button type="button" id="resample" class="secondary" disabled>乱数を変えて実行</button></div>
+        <div class="actions"><button type="button" id="resample" class="secondary" disabled>同じ設定で標本を取り直す</button><button type="button" id="run" class="primary" disabled>基準を作って実行</button></div>
         <p id="run-help" class="help">設定から生成したRコードを実行する。</p>
+        </div>
       </section>
-      <section class="results panel" aria-labelledby="results-title">
-        <h2 id="results-title">シミュレーション結果</h2>
+      <section class="notebook-cell results" aria-labelledby="results-title">
+        <span class="cell-index" aria-hidden="true">02</span>
+        <div class="cell-body">
+        <h2 id="results-title">図</h2>
         <div id="error" class="error" role="alert" hidden></div>
-        <p id="result-summary" class="result-summary">設定を確かめて実行すると，Rの計算結果と図がここに表示される。</p>
-        <div id="metrics" class="table-wrap"></div>
-        <div id="plots" class="plots"></div>
-        <details id="output-details"><summary>Rの出力</summary><pre id="output">未実行</pre></details>
-        <details id="settings-details" hidden><summary>実行した設定・コード</summary><pre id="executed-settings"></pre><pre id="executed-code"></pre></details>
+        <p id="result-summary" class="result-summary" role="status">実行すると図がここに表示される。</p>
+        <div id="baseline-controls" class="baseline-controls" hidden>
+          <p id="baseline-status"></p>
+          <div class="baseline-actions">
+            <button id="back-to-settings" type="button" class="secondary">設定を変える</button>
+            <button id="restore-baseline" type="button" class="quiet">基準の設定に戻す</button>
+            <button id="pin-baseline" type="button" class="quiet">今回を基準にする</button>
+          </div>
+        </div>
+        <section id="comparison-panel" class="comparison-panel" aria-labelledby="comparison-title" hidden>
+          <h3 id="comparison-title">基準との比較</h3>
+          <p id="comparison-kind" class="help"></p>
+          <ul id="comparison-changes" class="change-list"></ul>
+          <label for="comparison-view">比較する図</label><select id="comparison-view"></select>
+          <p id="comparison-focus" class="help"></p>
+          <p id="comparison-scale" class="scale-label">共通の目盛り・共通のヒストグラム区間</p>
+          <div id="comparison-plots" class="comparison-grid"></div>
+          <div id="comparison-metrics" class="table-wrap"></div>
+        </section>
+        <p id="comparison-error" class="error" role="status" hidden></p>
+        <details id="current-plots-details" class="current-plots" open><summary id="current-plots-title">今回の図</summary><div id="plots" class="plots"></div></details>
+        <details id="metrics-details" hidden><summary>計算結果</summary><div id="metrics" class="table-wrap"></div></details>
         <div id="exports" class="exports" hidden>
           <button type="button" id="download-r">実行コード .R</button>
           <button type="button" id="download-data">標本 CSV</button>
@@ -60,8 +90,29 @@
         </div>
         <div id="download-list" class="help" aria-live="polite"></div>
         <details id="history-details"><summary>この実験の比較履歴 <span id="history-count">0件</span></summary><p class="help">このページで実行した直近8件。設定は各行で確認できる。</p><div id="history" class="table-wrap"></div></details>
+        </div>
       </section>
-    </div>
+      <section id="code-cell" class="notebook-cell code-cell" aria-labelledby="code-title">
+        <span class="cell-index" aria-hidden="true">03</span>
+        <div class="cell-body">
+        <details id="code-details" class="code-disclosure">
+          <summary id="code-title">Rコード</summary>
+          <div id="generated-code-panel">
+            <pre id="generated-code">教材の読み込み中</pre>
+            <button type="button" id="edit-generated-code" class="secondary">Rコードを編集</button>
+          </div>
+          <div id="code-panel" hidden>
+            <p class="help">この欄のコード全体を実行する。設定欄の値を使うときは，設定をコードへ反映する。</p>
+            <button type="button" id="apply-settings" class="secondary">設定をコードへ反映</button>
+            <label for="code">編集するRコード <span class="help">Ctrl / ⌘ + Enterで実行</span></label>
+            <textarea id="code" spellcheck="false" wrap="off" rows="20"></textarea>
+            <div class="actions"><button type="button" id="use-settings" class="secondary">設定で試す</button><button type="button" id="run-code" class="primary" disabled>編集コードを実行</button></div>
+          </div>
+        </details>
+        <details id="output-details" hidden><summary>Rの出力</summary><pre id="output">未実行</pre></details>
+        <details id="settings-details" hidden><summary>実行した設定・コード</summary><pre id="executed-settings"></pre><pre id="executed-code"></pre></details>
+        </div>
+      </section>
     <footer>
       <p id="versions">WebR 0.6.0</p>
       <p>設定・編集コードはこのブラウザーに保存する。計算結果・Rコード・図は保存ボタンから書き出す。</p>
@@ -70,6 +121,7 @@
         <p><a href="https://www.mhlw.go.jp/toukei/list/chinginkouzou_b.html" target="_blank" rel="noopener">厚生労働省・賃金構造基本統計調査の概要</a>：学歴・勤続年数・経験年数と賃金を扱う分析場面の参考。地域・生成式・数値は本教材の仮想設定である。</p>
         <p><a href="https://ocw.mit.edu/courses/14-381-statistical-method-in-economics-fall-2018/resources/mit14_381f18_lec2/" target="_blank" rel="noopener">MIT 14.381 Lecture 2: Limit Theorems</a>：大数の法則・中心極限定理。Wooldridge (2010), <i>Econometric Analysis of Cross Section and Panel Data</i>, 2nd ed., 第3・4章：漸近理論・線形モデル。</p>
         <p><a href="https://docs.r-wasm.org/webr/latest/" target="_blank" rel="noopener">WebR公式文書</a>：Rの実行・図の取得・配信。実装の詳細と参照範囲は<a href="README.md" target="_blank" rel="noopener">利用手順</a>と<a href="teacher_notes.md" target="_blank" rel="noopener">モデル・設定一覧</a>の末尾に記載。</p>
+        <p><a href="https://katex.org/docs/browser.html" target="_blank" rel="noopener">KaTeX公式文書</a>：TeX形式の数式表示・数式フォントのローカル配信。</p>
       </details>
     </footer>
   </main>
