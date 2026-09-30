@@ -2,6 +2,8 @@ import { lessons } from './lessons.js';
 import { addFieldHelp, addButtonHelp, dismissTooltips } from './tooltips.js';
 import { renderMathText, renderFieldLabel, renderModel } from './math.js';
 import { guidance, parameterChanges, changeKind } from './guidance.js';
+import { journeys, journeyParameters } from './journeys.js';
+import { figureDescription } from './figures.js';
 
 const $ = id => document.getElementById(id);
 const STORAGE = 'econometrics-webr-2026-v2';
@@ -15,7 +17,7 @@ const states = new Map(lessons.map(lesson => {
   return [lesson.id, {
     params: {...defaults, ...(saved.params || {})}, draft: typeof saved.draft === 'string' ? saved.draft : null,
     scenario: saved.scenario || 'base', mode: saved.mode === 'code' ? 'code' : 'settings',
-    history: [], baseline: null, latest: null, view: guidance[lesson.id].actions[0].view
+    history: [], baseline: null, latest: null, journey: [], journeyDrafts: {}, view: journeys[lesson.id].view
   }];
 }));
 let lesson = lessons.find(x => x.id === location.hash.slice(1)) || lessons[0];
@@ -39,29 +41,31 @@ function status(message, kind = '') {
 function showError(message) {
   $('error').textContent = message;
   $('error').hidden = false;
+  $('free-lab').open = true;
 }
 function setBusy(value) {
   if (value) dismissTooltips();
   busy = value;
   document.body.classList.toggle('busy', value);
-  $('run').disabled = value || !ready || !loaded;
-  $('run-code').disabled = value || !ready || !loaded || states.get(lesson.id).mode !== 'code';
   const state = states.get(lesson.id);
+  $('run').disabled = value || !ready || !loaded;
+  $('run-code').disabled = value || !ready || !loaded || state.mode !== 'code';
   $('resample').disabled = value || !ready || !loaded || state.mode === 'code' || !state.latest || state.latest.mode !== 'settings' || isPending();
-  $('run').textContent = value ? 'Rで計算中…' : state.mode === 'code' ? '編集コードを実行' : state.baseline ? '比較して実行' : '基準を作って実行';
-  $('run-code').textContent = value ? 'Rで計算中…' : '編集コードを実行';
-  for (const el of document.querySelectorAll('#lesson-nav button, #fields input, #fields select, #scenario, #mode-settings, #mode-code, #reset-settings, #apply-settings, #edit-generated-code, #use-settings, #comparison-view, #back-to-settings')) el.disabled = value;
-  $('mode-code').disabled = value || !loaded;
+  $('run').textContent = value ? '計算中…' : 'この設定で実行';
+  $('run-code').textContent = value ? '計算中…' : 'このコードで実行';
+  for (const el of document.querySelectorAll('#lesson-select, #fields input, #fields select, #scenario, #reset-settings, #apply-settings, #use-settings, #comparison-view')) el.disabled = value;
   $('edit-generated-code').disabled = value || !loaded;
   $('code').readOnly = value;
-  $('restart').textContent = value ? '停止・Rを再起動' : 'Rを再起動';
+  $('restart').textContent = value ? '停止してRを再起動' : 'Rを再起動';
   $('pin-baseline').disabled = value || !state.latest || state.latest.mode !== 'settings' || state.latest === state.baseline;
   $('restore-baseline').disabled = value || !state.baseline;
-  for (const button of document.querySelectorAll('#guide button')) {
-    const action = guidance[lesson.id].actions[Number(button.dataset.action)];
-    button.disabled = value || !state.baseline || String(state.params[action.key]) === String(action.value);
+  for (const button of document.querySelectorAll('.journey-run')) {
+    button.disabled = value || !ready || !loaded;
+    button.textContent = value ? '計算中…' : Number(button.dataset.step) === 0 ? '最初の調査を実行' : 'この条件で実行';
   }
+  for (const input of document.querySelectorAll('.journey-input')) input.disabled = value;
 }
+
 function rValue(value, field) {
   if (field.options) return JSON.stringify(String(value));
   return `${Number(value)}${field.integer ? 'L' : ''}`;
@@ -92,15 +96,14 @@ function readSettings(report = true) {
 function markCustom() {
   states.get(lesson.id).scenario = 'custom';
   $('scenario').value = 'custom';
-  $('scenario-description').textContent = '下の値を使って実行する。';
+  $('scenario-description').textContent = '入力した値を使う。';
 }
 function setMode(mode) {
   dismissTooltips();
   const state = states.get(lesson.id);
   state.mode = mode;
   if (mode === 'code' && state.draft === null && loaded) state.draft = makeCode();
-  $('mode-settings').setAttribute('aria-pressed', String(mode === 'settings'));
-  $('mode-code').setAttribute('aria-pressed', String(mode === 'code'));
+  $('run').hidden = mode === 'code';
   $('settings-form').hidden = mode === 'code';
   $('code-panel').hidden = mode !== 'code';
   $('generated-code-panel').hidden = mode === 'code';
@@ -108,10 +111,7 @@ function setMode(mode) {
   document.body.classList.toggle('code-mode', mode === 'code');
   $('code').value = state.draft || '';
   refreshCodePreview();
-  $('run-help').textContent = mode === 'code'
-    ? '編集コードを実行する。標本を取り直すときはコード内のseedを変更する。'
-    : '比較では現在のシードを使う。標本の取り直しではシードだけを変更する。';
-  $('guide').hidden = mode === 'code';
+  $('run-help').textContent = mode === 'code' ? '下のRコードを編集して実行する。' : ''; 
   updateChanges();
   setBusy(busy);
   persist();
@@ -133,20 +133,16 @@ function clearResults() {
   $('output-details').hidden = true;
   $('exports').hidden = true;
   $('settings-details').hidden = true;
-  $('result-summary').textContent = '実行すると図がここに表示される。';
+  $('result-summary').textContent = '実行後に図を表示する。';
 }
 function renderLesson() {
   dismissTooltips();
   const state = states.get(lesson.id);
-  $('lesson-nav').replaceChildren(...lessons.map(item => {
-    const b = document.createElement('button');
-    b.type = 'button'; b.textContent = item.short;
-    b.setAttribute('aria-current', String(item.id === lesson.id));
-    b.addEventListener('click', () => {
-      lesson = item; location.hash = item.id; renderLesson();
-    });
-    return b;
-  }));
+  $('lesson-select').replaceChildren(...lessons.map((item, i) => new Option(`${i + 1}. ${item.short}`, item.id)));
+  $('lesson-select').value = lesson.id;
+  $('lesson-position').textContent = `${lessons.indexOf(lesson) + 1} / ${lessons.length}`;
+  $('free-lab').open = false;
+
   $('course').textContent = lesson.course;
   $('lesson-title').textContent = lesson.title;
   $('intro').textContent = lesson.intro;
@@ -155,7 +151,7 @@ function renderLesson() {
   $('scenario').replaceChildren(...(lesson.scenarios || []).map(s => new Option(s.name, s.id)), new Option('自由設定', 'custom'));
   if (state.scenario !== 'custom' && !(lesson.scenarios || []).some(s => s.id === state.scenario)) state.scenario = 'base';
   $('scenario').value = state.scenario;
-  renderMathText($('scenario-description'), (lesson.scenarios || []).find(s => s.id === state.scenario)?.description || '下の値を使って実行する。');
+  renderMathText($('scenario-description'), (lesson.scenarios || []).find(s => s.id === state.scenario)?.description || '入力した値を使う。');
   $('fields').replaceChildren(...lesson.fields.map(field => {
     const box = document.createElement('div'); box.className = 'field';
     const label = document.createElement('label'); label.htmlFor = `param-${field.key}`; label.textContent = field.label;
@@ -179,7 +175,7 @@ function renderLesson() {
     input.setAttribute('aria-describedby', `${input.getAttribute('aria-describedby') || ''} ${change.id}`.trim());
     return box;
   }));
-  renderGuide();
+  renderJourney();
   renderResults();
   setMode(state.mode);
   renderHistory();
@@ -281,11 +277,11 @@ function updateChanges() {
   const state = states.get(lesson.id), base = state.baseline, previous = state.latest;
   const pending = isPending(), valid = $('settings-form').checkValidity();
   $('pending-status').textContent = previous
-    ? pending ? `未実行の変更あり · 図は実行 ${previous.number} の結果` : `表示中の図：実行 ${previous.number}`
-    : valid || state.mode === 'code' ? 'まだ実行していない設定' : '設定値を入力中';
+    ? pending ? `変更は未実行 · 表示中の図は実行 ${previous.number} の結果` : `表示中の図：実行 ${previous.number}`
+    : valid || state.mode === 'code' ? '実行前の設定' : '設定値を入力中';
   if (!valid && state.mode === 'settings' && previous) $('pending-status').textContent = `設定値を入力中 · 図は実行 ${previous.number} の結果`;
   $('pending-status').classList.toggle('is-pending', pending);
-  $('changes-label').textContent = state.mode === 'code' ? '編集欄のRコードを実行する。' : base ? `基準（実行 ${base.number}）からの変更` : '';
+  $('changes-label').textContent = state.mode === 'code' ? '編集欄のRコードを実行する。' : base ? `比較相手（実行 ${base.number}）からの変更` : '';
   fillChanges($('parameter-changes'), state.mode === 'settings' ? base?.params : null, state.params);
   if (base && state.mode === 'settings' && !$('parameter-changes').children.length) $('changes-label').textContent += 'なし';
   for (const field of lesson.fields) {
@@ -294,37 +290,130 @@ function updateChanges() {
     const changed = base && state.mode === 'settings' && String(base.params[field.key]) !== String(state.params[field.key]);
     input.closest('.field').classList.toggle('is-changed', Boolean(changed));
     hint.hidden = !changed;
-    hint.textContent = changed ? `基準 ${fieldValue(field, base.params[field.key])} → ${fieldValue(field, state.params[field.key])}` : '';
+    hint.textContent = changed ? `変更前 ${fieldValue(field, base.params[field.key])} → ${fieldValue(field, state.params[field.key])}` : '';
   }
-  const stage = !base ? 1 : !pending && previous && previous !== base && previous.mode === 'settings' ? 3 : 2;
-  for (let n = 1; n <= 3; n++) {
-    if (n === stage) $(`guide-step-${n}`).setAttribute('aria-current', 'step');
-    else $(`guide-step-${n}`).removeAttribute('aria-current');
-  }
-  $('guide-instruction').textContent = !base
-    ? 'まず現在の設定で実行し，比較の基準を作る。'
-    : 'ボタンで1項目を変更し，比較して実行する。基準の結果は残る。';
   setBusy(busy);
 }
-function renderGuide() {
-  const config = guidance[lesson.id];
-  renderMathText($('guide-question'), config.question);
-  $('guide-primary').replaceChildren(); $('guide-alternatives').replaceChildren();
-  config.actions.forEach((action, i) => {
-    const button = document.createElement('button'); button.type = 'button'; button.className = 'secondary';
-    button.dataset.action = i; renderMathText(button, action.label);
-    button.setAttribute('aria-describedby', 'guide-instruction');
-    button.addEventListener('click', () => {
-      if (!readSettings()) return;
-      const state = states.get(lesson.id);
-      state.params[action.key] = action.value; state.view = action.view;
-      $(`param-${action.key}`).value = action.value;
-      markCustom(); persist(); refreshCodePreview(); updateChanges();
-      $('change-summary').scrollIntoView({block:'center', behavior:'smooth'});
-    });
-    $(i === 0 ? 'guide-primary' : 'guide-alternatives').append(button);
-  });
+
+function renderJourney() {
+  const state = states.get(lesson.id), config = journeys[lesson.id];
+  const complete = state.journey.length;
+  $('journey').replaceChildren();
+  for (let index = 0; index <= Math.min(complete, config.steps.length); index++) {
+    const step = index === 0 ? {title:config.startTitle, text:config.start, view:config.view} : config.steps[index - 1];
+    const record = state.journey[index];
+    const reference = index ? state.journey[step.reference] : null;
+    const section = document.createElement('section'); section.className = 'notebook-cell journey-cell'; section.id = `journey-${index}`;
+    const number = document.createElement('span'); number.className = 'cell-index'; number.textContent = String(index + 1).padStart(2, '0'); number.setAttribute('aria-hidden', 'true');
+    const body = document.createElement('div'); body.className = 'cell-body';
+    const title = document.createElement('h2'); title.id = `journey-title-${index}`; title.textContent = step.title;
+    section.setAttribute('aria-labelledby', title.id);
+    const text = document.createElement('p'); renderMathText(text, step.text);
+    body.append(title, text); section.append(number, body);
+    if (index) {
+      const from = document.createElement('p'); from.className = 'help';
+      from.textContent = `比較相手：${String(step.reference + 1).padStart(2, '0')}の調査`;
+      body.append(from);
+    }
+    if (record) {
+      const output = document.createElement('div'); output.className = 'journey-output'; output.id = `journey-output-${index}`;
+      const status = document.createElement('p'); status.className = 'journey-complete'; status.textContent = '実行済み';
+      output.append(status);
+      if (reference) {
+        const changes = document.createElement('ul'); changes.className = 'change-list'; fillChanges(changes, reference.params, record.params); output.append(changes);
+      }
+      const addView = (viewId, target) => {
+        const view = guidance[lesson.id].views.find(v => v.id === viewId);
+        const offset = guidance[lesson.id].views.indexOf(view) * 2;
+        if (!record.comparison) return;
+        const description = describeRunFigure(record, viewId);
+        const before = reference ? describeRunFigure(reference, viewId) : null;
+        const heading = document.createElement('h3'); heading.textContent = description.title; target.append(heading);
+        target.append(figureSummary(description));
+        const grid = document.createElement('div'); grid.className = reference ? 'comparison-grid' : 'journey-single';
+        if (reference) grid.append(imageFigure(record.comparison.images[offset], `変更前 · ${String(step.reference + 1).padStart(2, '0')}`, `${record.filePrefix}_before_${view.id}.png`, 'comparison-figure', before.summary, false, before.context));
+        grid.append(imageFigure(record.comparison.images[offset + 1], reference ? `変更後 · ${String(index + 1).padStart(2, '0')}` : '最初の調査', `${record.filePrefix}_after_${view.id}.png`, reference ? 'comparison-figure is-current' : 'comparison-figure', description.summary, false, description.context));
+        target.append(grid, figureKeys(description, before));
+        if (reference) {
+          const scale = document.createElement('p'); scale.className = 'help';
+          scale.textContent = record.comparison.histogramViews.includes(view.id) ? '軸の目盛りとヒストグラムの区間をそろえている。' : '軸の目盛りをそろえている。'; target.append(scale);
+        }
+      };
+      if (record.comparison) addView(step.view, output);
+      else {
+        const message = document.createElement('p'); message.className = 'error'; message.textContent = '比較図を作成できなかった。実行時の図を表示する。'; output.append(message);
+        record.images.forEach((picture, i) => output.append(imageFigure(picture, record.plotTitles[i] || '実行結果', `${record.filePrefix}_figure${i + 1}.png`, 'plot-card', record.plotNotes[i], false)));
+      }
+      if (record.comparison && step.extraView) {
+        const extra = document.createElement('details'), summary = document.createElement('summary');
+        summary.textContent = guidance[lesson.id].views.find(v => v.id === step.extraView).title;
+        extra.append(summary); addView(step.extraView, extra); output.append(extra);
+      }
+      const saved = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '設定・数値・保存'; saved.append(summary);
+      saved.append(makeTable(['設定','値'], lesson.fields.map(f => [f.label, fieldValue(f, record.params[f.key])]), [1]));
+      saved.append(makeTable(['計算した量','値'], record.metrics.map(m => [m.label, formatNumber(m.value)]), [1]));
+      const links = document.createElement('div'); links.className = 'save-links';
+      const file = (label, name, data, type) => {
+        const a = document.createElement('a'); a.href = '#'; a.textContent = label;
+        a.addEventListener('click', event => { event.preventDefault(); download(name, data, type); }); links.append(a);
+      };
+      file('Rコード', `${record.filePrefix}.R`, record.code, 'text/plain;charset=utf-8');
+      for (const [key, label] of [['data','標本のCSV'], ['repetitions','反復結果のCSV'], ['metrics','計算結果のCSV']]) if (record.csv[key]) file(label, `${record.filePrefix}_${key}.csv`, '\uFEFF' + record.csv[key], 'text/csv;charset=utf-8');
+      const offset = guidance[lesson.id].views.findIndex(v => v.id === step.view) * 2;
+      if (record.comparison) for (const side of reference ? [0, 1] : [1]) {
+        const a = document.createElement('a'); a.textContent = side ? '表示中の図のPNG' : '変更前の図のPNG';
+        a.href = record.comparison.images[offset + side].url; a.download = `${record.filePrefix}_${side ? 'after' : 'before'}_${step.view}.png`; links.append(a);
+      }
+      saved.append(links); output.append(saved); body.append(output);
+    } else {
+      const form = document.createElement('form'); form.className = 'journey-form';
+      if (index) {
+        const field = lesson.fields.find(f => f.key === step.key);
+        const box = document.createElement('div'); box.className = 'field journey-field';
+        const label = document.createElement('label'); label.htmlFor = `journey-value-${index}`; label.textContent = field.label;
+        const input = document.createElement(field.options ? 'select' : 'input'); input.id = label.htmlFor; input.className = 'journey-input';
+        if (field.options) for (const [value, name] of field.options) input.add(new Option(name, value));
+        else { input.type = 'number'; input.min = field.min; input.max = field.max; input.step = field.step; input.required = true; }
+        input.value = state.journeyDrafts[index] ?? step.value;
+        input.addEventListener('input', () => { state.journeyDrafts[index] = input.value; });
+        const before = document.createElement('p'); before.className = 'help'; before.id = `journey-before-${index}`; before.textContent = `変更前：${fieldValue(field, reference.params[step.key])}${field.hint && ['年','万円','万円／年'].includes(field.hint) ? ` ${field.hint}` : ''}`;
+        input.setAttribute('aria-describedby', before.id);
+        box.append(label, input, before); addFieldHelp(label, input, field.help); renderFieldLabel(label, field.label); form.append(box);
+      }
+      const button = document.createElement('button'); button.type = 'submit'; button.className = 'primary journey-run'; button.dataset.step = index;
+      button.textContent = index === 0 ? '最初の調査を実行' : 'この条件で実行';
+      const error = document.createElement('p'); error.id = `journey-error-${index}`; error.className = 'error'; error.hidden = true; error.setAttribute('role','alert');
+      form.append(button, error);
+      form.addEventListener('submit', event => { event.preventDefault(); runJourney(index); });
+      body.append(form);
+    }
+    $('journey').append(section);
+  }
+  $('journey-next').hidden = complete <= config.steps.length;
+  $('journey-next-text').textContent = config.next;
+  const next = lessons[lessons.indexOf(lesson) + 1];
+  $('next-lesson').hidden = !next;
+  if (next) { $('next-lesson').href = `#${next.id}`; $('next-lesson').textContent = `${next.short}へ →`; }
+  setBusy(busy);
 }
+
+async function runJourney(index) {
+  if (!ready || !loaded || busy) return;
+  const state = states.get(lesson.id);
+  if (index !== state.journey.length) return;
+  const step = index ? journeys[lesson.id].steps[index - 1] : null;
+  const input = index ? $(`journey-value-${index}`) : null;
+  if (input && !input.reportValidity()) return;
+  const field = step ? lesson.fields.find(f => f.key === step.key) : null;
+  const value = input ? field.options ? input.value : Number(input.value) : undefined;
+  state.params = journeyParameters(lesson, index, state.journey, value);
+  state.view = step?.view || journeys[lesson.id].view;
+  for (const f of lesson.fields) $(`param-${f.key}`).value = state.params[f.key];
+  markCustom(); setMode('settings');
+  $(`journey-error-${index}`).hidden = true;
+  await run({journeyIndex:index});
+}
+
 function savedImages(images) {
   return images.map(image => {
     try {
@@ -334,15 +423,49 @@ function savedImages(images) {
     } finally { image.close(); }
   });
 }
-function imageFigure(picture, title, name, className = 'plot-card', description = title) {
+function describeRunFigure(record, view) {
+  const settings = Object.fromEntries(csvObjects(record.csv.settings).map(row => [row.setting, row.value]));
+  const metrics = Object.fromEntries(record.metrics.map(row => [row.key, row.value]));
+  return figureDescription(record.lessonId, view, settings, metrics);
+}
+function figureSummary(description) {
+  const node = document.createElement('div'); node.className = 'figure-summary';
+  const text = document.createElement('p'); renderMathText(text, description.summary); node.append(text);
+  if (description.density) {
+    const density = document.createElement('p'); density.className = 'density-description'; density.textContent = description.density; node.append(density);
+  }
+  return node;
+}
+function figureKeys(description, before = null) {
+  const list = document.createElement('dl'); list.className = 'figure-keys'; list.setAttribute('aria-label', '点・棒・線の意味');
+  for (const [i, key] of description.keys.entries()) {
+    const row = document.createElement('div'), term = document.createElement('dt'), text = document.createElement('dd');
+    const swatch = document.createElement('span'); swatch.className = `figure-mark ${key.mark}`; swatch.setAttribute('aria-hidden', 'true');
+    term.append(swatch, key.label);
+    const previous = before?.keys[i];
+    renderMathText(text, previous && previous.text !== key.text ? `変更前：${previous.text}変更後：${key.text}` : key.text);
+    row.append(term, text); list.append(row);
+  }
+  return list;
+}
+function imageFigure(picture, title, name, className = 'plot-card', description = title, showSave = true, context = '') {
   const figure = document.createElement('figure'); figure.className = className;
   const heading = document.createElement(className.includes('comparison-figure') ? 'h4' : 'h3'); heading.textContent = title;
-  const img = document.createElement('img'); img.src = picture.url; img.width = picture.width; img.height = picture.height; img.alt = description || title;
+  const img = document.createElement('img'); img.src = picture.url; img.width = picture.width; img.height = picture.height; img.alt = `${context ? context + '。' : ''}${description || title}`;
   const caption = document.createElement('figcaption'), button = document.createElement('button');
   button.type = 'button'; button.textContent = '図を保存 PNG';
   button.addEventListener('click', async () => download(name, await (await fetch(picture.url)).blob(), 'image/png'));
-  caption.append(button); figure.append(heading, img, caption);
-  addButtonHelp(button, '表示中の図をPNG画像として保存する。');
+  figure.append(heading);
+  if (context) { const unit = document.createElement('p'); unit.className = 'figure-context'; renderMathText(unit, context); figure.append(unit); }
+  figure.append(img);
+  if (!className.includes('comparison-figure') && description && description !== title) {
+    const note = document.createElement('p'); note.className = 'plot-description'; renderMathText(note, description); caption.append(note);
+  }
+  if (showSave) {
+    caption.append(button);
+    addButtonHelp(button, '表示中の図をPNGで保存する。');
+  }
+  if (caption.childNodes.length) figure.append(caption);
   return figure;
 }
 function renderComparison() {
@@ -353,17 +476,19 @@ function renderComparison() {
   $('comparison-error').textContent = record?.comparisonError ? `比較図を作成できなかった。今回の図は下で確認できる。\n${record.comparisonError}` : '';
   if (!compared) return;
   const config = guidance[lesson.id];
-  $('comparison-kind').textContent = `基準：実行 ${base.number} → 今回：実行 ${record.number} · ${changeKind(lesson.fields, base.params, record.params)}`;
+  $('comparison-kind').textContent = `変更前：実行 ${base.number} → 変更後：実行 ${record.number} · ${changeKind(lesson.fields, base.params, record.params)}`;
   fillChanges($('comparison-changes'), base.params, record.params);
   const view = config.views.find(v => v.id === state.view) || config.views[0];
   $('comparison-view').value = view.id;
-  $('comparison-focus').textContent = view.focus;
+  const description = describeRunFigure(record, view.id), before = describeRunFigure(base, view.id);
+  $('comparison-focus').replaceChildren(figureSummary(description));
+  $('comparison-keys').replaceChildren(figureKeys(description, before));
   $('comparison-scale').textContent = record.comparison.histogramViews.includes(view.id)
     ? '共通の目盛り・共通のヒストグラム区間' : '横軸・縦軸は共通の目盛り';
   const index = config.views.findIndex(v => v.id === view.id) * 2;
   $('comparison-plots').replaceChildren(
-    imageFigure(record.comparison.images[index], `基準 · 実行 ${base.number}`, `${record.filePrefix}_reference_${view.id}.png`, 'comparison-figure', `基準：${view.title}。${view.focus}`),
-    imageFigure(record.comparison.images[index + 1], `今回 · 実行 ${record.number}`, `${record.filePrefix}_current_${view.id}.png`, 'comparison-figure is-current', `今回：${view.title}。${view.focus}`)
+    imageFigure(record.comparison.images[index], `変更前 · 実行 ${base.number}`, `${record.filePrefix}_reference_${view.id}.png`, 'comparison-figure', before.summary, true, before.context),
+    imageFigure(record.comparison.images[index + 1], `変更後 · 実行 ${record.number}`, `${record.filePrefix}_current_${view.id}.png`, 'comparison-figure is-current', description.summary, true, description.context)
   );
   const ref = new Map(base.metrics.map(m => [m.key, m]));
   const now = new Map(record.metrics.map(m => [m.key, m]));
@@ -371,7 +496,7 @@ function renderComparison() {
     const a = ref.get(key), b = now.get(key), difference = Number(b.value) - Number(a.value);
     return [b.label, formatNumber(a.value), formatNumber(b.value), Number.isFinite(difference) ? `${difference > 0 ? '+' : ''}${formatNumber(difference)}` : '—'];
   });
-  $('comparison-metrics').replaceChildren(makeTable(['計算した量','基準','今回','差'], rows, [1, 2, 3]));
+  $('comparison-metrics').replaceChildren(makeTable(['計算した量','変更前','変更後','差'], rows, [1, 2, 3]));
 }
 function renderResults() {
   clearResults();
@@ -386,7 +511,7 @@ function renderResults() {
   $('plots').replaceChildren(...record.images.map((picture, i) => imageFigure(picture, `${i + 1}. ${record.plotTitles[i] || 'Rによる図'}`, `${record.filePrefix}_figure${i + 1}.png`, 'plot-card', record.plotNotes[i])));
   $('current-plots-details').hidden = !record.images.length;
   $('current-plots-details').open = !record.comparison || record === state.baseline;
-  $('current-plots-title').textContent = `今回の全図 · 実行 ${record.number}`;
+  $('current-plots-title').textContent = `今回のすべての図 · 実行 ${record.number}`;
   $('output').textContent = record.output || '実行完了。テキスト出力なし。';
   $('output-details').hidden = false;
   $('result-summary').textContent = `実行 ${record.number} · ${record.mode === 'code' ? '編集コード' : record.kind} · ${record.seconds.toFixed(1)}秒`;
@@ -397,7 +522,7 @@ function renderResults() {
   $('download-repetitions').disabled = !record.csv.repetitions;
   $('download-metrics').disabled = !record.csv.metrics;
   $('baseline-controls').hidden = !state.baseline;
-  $('baseline-status').textContent = state.baseline ? `比較の基準：実行 ${state.baseline.number}` : '';
+  $('baseline-status').textContent = state.baseline ? `比較相手：実行 ${state.baseline.number}` : '';
   renderComparison();
 }
 async function compareRuns(record, reference, shelter, localEngine, token) {
@@ -419,7 +544,7 @@ async function startEngine() {
   const old = engine; engine = null; ready = false;
   if (old) { try { old.close(); } catch { /* A previously closed worker. */ } }
   setBusy(false);
-  status('Rの準備中… 初回は読み込みに時間がかかる');
+  status('Rを準備中…');
   $('restart').disabled = true;
   try {
     const { WebR } = await import(`${WEBR_BASE}webr.mjs`);
@@ -443,9 +568,11 @@ async function startEngine() {
   }
 }
 
-async function run() {
+async function run(options = {}) {
   if (!ready || busy || !loaded) return;
   const state = states.get(lesson.id);
+  const guided = Number.isInteger(options.journeyIndex);
+  const reference = guided ? options.journeyIndex ? state.journey[journeys[lesson.id].steps[options.journeyIndex - 1].reference] : null : state.baseline;
   if (state.mode === 'settings' && !readSettings()) return;
   const code = state.mode === 'code' ? $('code').value : makeCode();
   if (!code.trim()) { showError('実行するRコードを入力する。'); return; }
@@ -453,7 +580,7 @@ async function run() {
   const localEngine = engine, token = generation, started = performance.now();
   const currentLesson = lesson, mode = state.mode, params = {...state.params};
   $('error').hidden = true; setBusy(true); status('Rで計算中…');
-  $('result-summary').textContent = 'Rで標本の生成・推定・描画を実行中。';
+  $('result-summary').textContent = 'データを生成して計算中…';
   let shelter;
   try {
     shelter = await new localEngine.Shelter();
@@ -486,34 +613,41 @@ async function run() {
     const record = {
       number, lessonId:currentLesson.id, lessonTitle:currentLesson.title, mode, code, csv, metrics, settingsText,
       params: mode === 'settings' ? params : null,
-      kind: mode === 'settings' ? changeKind(currentLesson.fields, state.latest?.params, params) : '編集コード',
+      kind: mode === 'settings' ? changeKind(currentLesson.fields, reference?.params, params) : '編集コード',
       model:strings.model, time:new Date().toISOString(), runtimeVersion, rVersion,
       output:outputParts.join('\n'), seconds:(performance.now() - started) / 1000,
       filePrefix:`${currentLesson.id}_run${String(number).padStart(2,'0')}`,
       plotTitles:strings.plot_titles, plotNotes:strings.plot_notes, images:savedImages(capture.images), comparison:null
     };
-    if (mode === 'settings' && state.baseline) {
-      status('基準と今回の図を作成中…');
-      try { record.comparison = await compareRuns(record, state.baseline, shelter, localEngine, token); }
+    if (mode === 'settings' && (reference || guided)) {
+      status('図を作成中…');
+      try { record.comparison = await compareRuns(record, reference || record, shelter, localEngine, token); }
       catch (error) { record.comparisonError = String(error.message || error); }
     }
     if (token !== generation) return;
-    if (mode === 'settings' && !state.baseline) state.baseline = record;
+    if (guided) { state.baseline = reference || record; state.journey.push(record); }
+    else if (mode === 'settings' && !state.baseline) state.baseline = record;
     state.latest = record;
     // 履歴は数値・設定だけを持ち，図は基準と今回の結果に保持する。
     const {images, comparison, ...historyRecord} = record;
     state.history.push(historyRecord); if (state.history.length > 8) state.history.shift();
     renderResults(); renderHistory(); updateChanges();
+    if (guided) renderJourney();
     status('実行完了', 'ready');
-    $('results-title').scrollIntoView({block:'start', behavior:'smooth'});
+    const resultTarget = guided ? $(`journey-output-${options.journeyIndex}`) : $('results-title');
+    resultTarget.tabIndex = -1;
+    resultTarget.focus({preventScroll:true});
+    resultTarget.scrollIntoView({block:'start', behavior:'smooth'});
   } catch (error) {
     if (token !== generation) return;
     renderResults();
-    showError(`Rの実行が完了しなかった。設定またはコードを確認する。\n${error.message || error}`);
+    const message = `実行できなかった。\n${error.message || error}`;
+    if (guided) { const node = $(`journey-error-${options.journeyIndex}`); node.textContent = message; node.hidden = false; }
+    else showError(message);
     $('output').textContent = String(error.message || error);
     $('output-details').hidden = false;
     $('output-details').open = true;
-    $('result-summary').textContent = state.latest ? `実行エラー · 図は実行 ${state.latest.number} の結果` : 'この実行の結果は未生成。';
+    $('result-summary').textContent = state.latest ? `実行エラー · 図は実行 ${state.latest.number} の結果` : 'まだ結果はない。';
     status('Rの実行エラー', 'error');
   } finally {
     if (token === generation) {
@@ -524,8 +658,8 @@ async function run() {
   }
 }
 
-$('run').addEventListener('click', run);
-$('run-code').addEventListener('click', run);
+$('run').addEventListener('click', () => run());
+$('run-code').addEventListener('click', () => run());
 $('resample').addEventListener('click', () => {
   if (!readSettings()) return;
   const random = new Uint32Array(1); crypto.getRandomValues(random);
@@ -542,7 +676,8 @@ $('comparison-view').addEventListener('change', () => {
 $('pin-baseline').addEventListener('click', () => {
   const state = states.get(lesson.id);
   if (state.latest?.mode !== 'settings') return;
-  state.baseline = state.latest; state.latest.comparison = null; state.latest.comparisonError = null;
+  state.latest = {...state.latest, comparison:null, comparisonError:null};
+  state.baseline = state.latest;
   renderResults(); updateChanges();
 });
 $('restore-baseline').addEventListener('click', () => {
@@ -553,22 +688,18 @@ $('restore-baseline').addEventListener('click', () => {
   markCustom(); setMode('settings'); persist(); refreshCodePreview(); updateChanges();
   $('change-summary').scrollIntoView({block:'center', behavior:'smooth'});
 });
-$('back-to-settings').addEventListener('click', () => {
-  setMode('settings'); $('guide').scrollIntoView({block:'start', behavior:'smooth'});
-});
-$('mode-settings').addEventListener('click', () => setMode('settings'));
+
 function editCode() {
   if (!loaded || !readSettings()) return;
   setMode('code');
   $('code-cell').scrollIntoView({block:'start'});
   $('code').focus({preventScroll:true});
 }
-$('mode-code').addEventListener('click', editCode);
 $('edit-generated-code').addEventListener('click', editCode);
 $('use-settings').addEventListener('click', () => {
   setMode('settings');
   $('setup-title').scrollIntoView({block:'start'});
-  $('mode-settings').focus({preventScroll:true});
+  $('scenario').focus({preventScroll:true});
 });
 $('apply-settings').addEventListener('click', () => {
   if (!loaded) return;
@@ -611,28 +742,30 @@ $('download-repetitions').addEventListener('click', () => downloadCSV('repetitio
 $('download-metrics').addEventListener('click', () => downloadCSV('metrics'));
 window.addEventListener('hashchange', () => {
   const target = lessons.find(x => x.id === location.hash.slice(1));
-  if (target && target.id !== lesson.id && !busy) { lesson = target; renderLesson(); }
+  if (target && target.id !== lesson.id && !busy) { lesson = target; renderLesson(); $('lesson-title').scrollIntoView({block:'start'}); }
+});
+
+$('lesson-select').addEventListener('change', () => {
+  const target = lessons.find(x => x.id === $('lesson-select').value);
+  if (target && !busy) { lesson = target; location.hash = target.id; renderLesson(); }
 });
 
 addFieldHelp(document.querySelector('label[for="scenario"]'), $('scenario'),
-  'あらかじめ用意した設定の組合せを選ぶ。選択すると，この実験の全項目がその組合せの値に切り替わる。選んだ後に各数値を変更することもできる。');
+  '設定例を選ぶと，全項目がその例の値に切り替わる。選択後に数値を編集できる。');
 const actionHelp = {
-  'mode-settings':'数値欄で指定した設定からRコードを生成する。実行ボタンを押すと，そのコードを使う。',
-  'mode-code':'生成式・推定式・描画を含むRコード全体を編集する。このモードでは，編集欄の内容を実行する。',
-  'edit-generated-code':'Rコードの編集欄を開く。以前に編集した内容がある場合は，その内容を表示する。',
-  'use-settings':'設定欄の数値を使うモードへ戻る。編集したRコードは保持する。',
-  'reset-settings':'この実験の設定値を初期値へ戻す。実行済みの結果と編集コードはそのまま残る。',
-  'apply-settings':'編集欄全体を，現在の設定値から生成したRコードで置き換える。編集欄に加えた変更も置き換わる。',
-  'run':'設定モードでは最初の実行を基準にする。次の実行では基準と今回の結果を同じ目盛りで比較する。編集モードではコード欄を実行する。',
+  'edit-generated-code':'Rコードを編集する。保存した編集コードがあれば，それを開く。',
+  'use-settings':'入力欄の数値を使って実行する。編集コードは保存される。',
+  'reset-settings':'設定値を初期値に戻す。',
+  'apply-settings':'現在の設定からRコードを作り，編集欄を置き換える。',
+  'run':'入力した設定で実行し，保存済みの結果と比較する。',
   'run-code':'Rコードの編集欄にあるコード全体を実行する。',
-  'resample':'表示中の結果と同じ設定で，乱数シードだけを変更して実行する。未実行の設定変更がある間は使わない。係数の精度では説明変数も生成し直し，新しい説明変数を各反復で固定する。',
-  'pin-baseline':'現在の実行結果を新しい基準にする。次の実行から，この結果との比較を表示する。',
-  'restore-baseline':'入力欄の全項目と乱数シードを基準の設定に戻す。図は次に実行するまで変わらない。',
-  'back-to-settings':'操作ヒントと設定欄へ戻る。比較の基準は保持する。',
-  'restart':'Rの実行環境を作り直す。計算中に押すと実行を停止する。設定値と編集コードは保持する。',
-  'download-r':'直前に成功した実行のRコードを保存する。保存したファイルは通常のRでも実行できる。',
-  'download-data':'直前に成功した実行の，表示用の一つの標本をCSVで保存する。',
-  'download-repetitions':'直前に成功した実行の反復結果をCSVで保存する。1行が1回の反復に対応する。',
+  'resample':'乱数シードを変えて再実行する。係数の精度では説明変数も生成し直し，新しい値を各反復で固定する。',
+  'pin-baseline':'次の実行を，今回の結果と比較する。',
+  'restore-baseline':'入力値と乱数シードを，比較相手の設定に戻す。',
+  'restart':'Rを起動し直す。計算中の場合は停止する。',
+  'download-r':'直前の実行コードを保存する。通常のRでも実行できる。',
+  'download-data':'図に使った一つの標本をCSVで保存する。',
+  'download-repetitions':'反復結果をCSVで保存する。1行が1回の反復に当たる。',
   'download-metrics':'結果の表に表示した計算値をCSVで保存する。'
 };
 for (const [id, text] of Object.entries(actionHelp)) addButtonHelp($(id), text);
@@ -642,11 +775,11 @@ try {
   await Promise.all([...lessons.map(async item => {
     const response = await fetch(item.file);
     if (!response.ok) throw new Error(`${item.file}: HTTP ${response.status}`);
-    templates.set(item.id, await response.text());
+    templates.set(item.id, (await response.text()).replace(/\r\n?/g, '\n'));
   }), (async () => {
     const response = await fetch('r/compare_runs.R');
     if (!response.ok) throw new Error(`r/compare_runs.R: HTTP ${response.status}`);
-    comparisonTemplate = await response.text();
+    comparisonTemplate = (await response.text()).replace(/\r\n?/g, '\n');
   })()]);
   loaded = true; setMode(states.get(lesson.id).mode);
   await startEngine();

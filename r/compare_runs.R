@@ -16,9 +16,20 @@ econometrics_compare <- function(kind, reference, current) {
   }
   setup <- function() {
     par(mfrow = c(1, 1), family = getOption("econometrics.font", "sans"),
-        mar = c(4.8, 4.8, 1.1, 1), mgp = c(3.2, .75, 0),
+        mar = c(4.8, 6, 2.6, 1), mgp = c(3.2, .75, 0),
         col = ink, col.axis = ink, col.lab = ink, fg = ink, las = 1,
         bty = "l", cex = 1, xpd = FALSE)
+  }
+  # 縦軸名は軸の上に横書きで置き，桁数の多い目盛りと分ける。
+  vertical_title <- function(label) mtext(label, side = 3, line = .4, adj = 0, cex = .85)
+  plot <- function(..., ylab = "") {
+    graphics::plot(..., ylab = "")
+    vertical_title(ylab)
+  }
+  barplot <- function(..., ylab = "") {
+    at <- graphics::barplot(..., ylab = "")
+    vertical_title(ylab)
+    invisible(at)
   }
   axes <- list(); bins <- list()
   # 凡例は描画領域の外へまとめ，点や分布を覆わない。
@@ -43,14 +54,10 @@ econometrics_compare <- function(kind, reference, current) {
         plot.new()
         if (!is.null(legend_args)) {
           legend_args[c("cex", "horiz", "bty", "y.intersp")] <- NULL
-          do.call(graphics::legend, c(list(x = "center", ncol = 2, cex = .9, bty = "n", y.intersp = 1.15), legend_args))
+          do.call(graphics::legend, c(list(x = "center", ncol = 2, cex = .9, bty = "n", y.intersp = 1.7), legend_args))
         }
       }
     }
-  }
-  legend_lines <- function(labels, colors, types = rep(1, length(labels)), widths = rep(2, length(labels))) {
-    legend("topright", labels, col = colors, lty = types, lwd = widths,
-           bty = "n", cex = .95, y.intersp = 1.1)
   }
   # 全実行・全系列から共通区間を作り，各系列の密度を計算する。
   histogram_pair <- function(id, samples, xlab, colors, labels,
@@ -67,10 +74,11 @@ econometrics_compare <- function(kind, reference, current) {
     ylim <- c(0, max(finite(c(lapply(hs, function(series) lapply(series, `[[`, "density")), curves))) * 1.3)
     bins[[id]] <<- breaks
     pair(id, function(r, i) {
-      par(mar = c(4.8, 6, 1.1, 1))
+      par(mar = c(4.8, 8, 2.6, 1))
       plot(hs[[i]][[1]], freq = FALSE, xlim = range(breaks), ylim = ylim,
-           col = adjustcolor(colors[1], .4), border = "white", main = "", xlab = xlab, ylab = "")
-      mtext("密度", side = 2, line = 4.7, las = 0)
+           col = adjustcolor(colors[1], .4), border = "white", main = "", xlab = xlab, ylab = "", xaxt = "n")
+      axis(1, at = pretty(range(breaks), n = 4))
+      vertical_title("密度")
       if (length(hs[[i]]) > 1) for (j in 2:length(hs[[i]]))
         plot(hs[[i]][[j]], freq = FALSE, col = adjustcolor(colors[j], .4), border = "white", add = TRUE)
       if (!is.null(densities)) lines(xx, curves[[i]], col = density_color, lwd = 2.5)
@@ -79,10 +87,11 @@ econometrics_compare <- function(kind, reference, current) {
                lty = rep(target_types, length.out = length(targets[[i]]))[j], lwd = 2)
       labs <- if (is.function(labels)) labels(r) else labels
       dlabs <- if (is.function(density_labels)) density_labels(r) else density_labels
-      legend_lines(c(labs, dlabs, target_labels),
-        c(colors, if (!is.null(densities)) density_color, if (length(target_labels)) rep(target_colors, length.out = length(target_labels))),
-        c(rep(1, length(labs) + length(dlabs)), rep(target_types, length.out = length(target_labels))),
-        c(rep(7, length(labs)), rep(2, length(dlabs) + length(target_labels))))
+      legend("topright", c(labs, dlabs, target_labels),
+        col = c(adjustcolor(colors, .6), if (!is.null(densities)) density_color, if (length(target_labels)) rep(target_colors, length.out = length(target_labels))),
+        pch = c(rep(15, length(labs)), rep(NA, length(dlabs) + length(target_labels))), pt.cex = 1.4,
+        lty = c(rep(NA, length(labs)), rep(1, length(dlabs)), rep(target_types, length.out = length(target_labels))),
+        lwd = 2, bty = "n")
     })
   }
   if (kind == "survey") {
@@ -90,11 +99,11 @@ econometrics_compare <- function(kind, reference, current) {
       d <- r$data; rr <- d$response == 1
       shares <- c(number(r, "p"), mean(d$a), mean(d$a[rr]))
       barplot(rbind(1 - shares, shares), col = c(blue, orange), border = NA,
-        names.arg = c("母集団", "招待者", "回答者"), ylim = c(0, 1.25), ylab = "構成比")
+        names.arg = c("母集団", "依頼対象者", "回答者"), ylim = c(0, 1.25), ylab = "構成比")
       legend("top", c("地域A", "地域B"), fill = c(blue, orange), bty = "n", horiz = TRUE, cex = .95)
     })
     histogram_pair("means", lapply(runs, function(r) list(r$repetitions$invited_mean, r$repetitions$respondent_mean)),
-      "各調査の平均（万円）", c(blue, orange), c("招待者平均", "回答者平均"),
+      "各調査の平均（万円）", c(blue, orange), c("依頼対象者平均", "回答者平均"),
       lapply(runs, function(r) c(metric(r, "population_mean"), metric(r, "response_target"))),
       c("母平均", "回答者集団の平均"), c(blue, orange), c(2, 3))
   } else if (kind == "prediction") {
@@ -116,18 +125,19 @@ econometrics_compare <- function(kind, reference, current) {
     mse <- lapply(runs, function(r) vapply(c("mse_constant", "mse_linear", "mse_conditional"), function(k) metric(r, k), numeric(1)))
     ylim <- c(0, max(unlist(mse)) * 1.32)
     pair("mse", function(r, i) {
-      par(mar = c(4.8, 6, 1.1, 1))
+      par(mar = c(4.8, 6, 2.6, 1))
       s2 <- number(r, "sigma")^2
-      barplot(rbind(rep(s2, 3), pmax(mse[[i]] - s2, 0)), col = c(blue, orange), border = NA,
-        names.arg = c("母平均", "線形射影", "条件付き\n期待値"), cex.names = .85,
-        ylim = ylim, ylab = "二乗予測誤差の\n期待値（万円²）")
-      legend("topright", c("所得の誤差の分散", "平均関数とのずれ"), fill = c(blue, orange), bty = "n", cex = .95)
+      at <- barplot(rbind(rep(s2, 3), pmax(mse[[i]] - s2, 0)), col = c(blue, orange), border = NA,
+        axisnames = FALSE,
+        ylim = ylim, ylab = "平均二乗誤差（万円²）")
+      mtext(c("母平均", "線形射影", "条件付き期待値"), side = 1, at = at, line = 1, cex = .8)
+      legend("topright", c("誤差の分散", "平均関数とのずれ"), fill = c(blue, orange), bty = "n", cex = .95)
     })
     lim <- max(1, abs(unlist(lapply(runs, function(r) r$groups$conditional_projection_error)))) * 1.2
     pair("projection_error", function(r, i) {
-      par(mar = c(4.8, 6, 1.1, 1))
+      par(mar = c(4.8, 6, 2.6, 1))
       barplot(r$groups$conditional_projection_error, names.arg = r$groups$s, col = blue, border = NA,
-        ylim = c(-lim, lim), xlab = "教育年数（年）", ylab = "条件付き平均 −\n線形射影（万円）")
+        ylim = c(-lim, lim), xlab = "教育年数（年）", ylab = "平均所得−予測値（万円）")
       abline(h = 0, col = ink)
     })
   } else if (kind == "auxiliary") {
@@ -139,8 +149,8 @@ econometrics_compare <- function(kind, reference, current) {
         d <- r$data
         plot(d[[xkey]], d[[ykey]], pch = c(16, 17)[d$a + 1], col = adjustcolor(c(blue, orange)[d$a + 1], .55),
           xlim = xlim, ylim = ylim,
-          xlab = if (centered) expression(tilde(d)[i]~"（年）") else "教育年数 d（年）",
-          ylab = if (centered) expression(tilde(y)[i]~"（万円）") else "年間所得 y（万円）")
+          xlab = if (centered) "教育年数の地域平均との差（年）" else "教育年数 d（年）",
+          ylab = if (centered) "所得の地域平均との差（万円）" else "年間所得 y（万円）")
         if (centered) {
           abline(h = 0, v = 0, col = "#BCCED8", lty = 3)
           abline(0, metric(r, "auxiliary"), col = ink, lty = 2, lwd = 2)
@@ -151,7 +161,7 @@ econometrics_compare <- function(kind, reference, current) {
           abline(mean(d$y) - metric(r, "raw") * mean(d$d), metric(r, "raw"), col = ink, lty = 2, lwd = 2)
         }
         legend("topleft", c("地域A", "地域B", if (centered) "補助回帰" else "全体の単回帰"),
-          pch = c(16, 17, NA), col = c(blue, orange, ink), lty = c(NA, NA, 2),
+          pch = c(16, 17, NA), col = c(blue, orange, ink), lty = if (centered) c(NA, NA, 2) else c(1, 1, 2),
           lwd = 2, bty = "n", cex = .95)
       })
     }
@@ -169,7 +179,7 @@ econometrics_compare <- function(kind, reference, current) {
       key <- paste0("beta", j); sdkey <- paste0("theory_sd", j)
       densities <- lapply(runs, function(r) { target <- number(r, key); ss <- metric(r, sdkey); function(x) dnorm(x, target, ss) })
       extra <- lapply(runs, function(r) number(r, key) + c(-4, 4) * metric(r, sdkey))
-      histogram_pair(key, lapply(runs, function(r) list(r$repetitions[[key]])), "係数（万円／年）", blue, "反復結果",
+      histogram_pair(key, lapply(runs, function(r) list(r$repetitions[[key]])), c("経験年数の係数（万円／年）", "勤続年数の係数（万円／年）")[j], blue, "各回の推定値",
         lapply(runs, function(r) number(r, key)), "生成式の係数", densities = densities,
         density_labels = "条件付き正規密度", extra_range = extra)
     }
@@ -186,7 +196,7 @@ econometrics_compare <- function(kind, reference, current) {
       densities = lapply(runs, population_density), density_labels = "母集団の密度", density_color = blue,
       extra_range = lapply(runs, function(r) number(r, "mu") + number(r, "sigma") * c(-4, 7)))
     densities <- lapply(runs, function(r) { mu <- number(r, "mu"); ss <- metric(r, "theory_sd"); function(x) dnorm(x, mu, ss) })
-    histogram_pair("means", lapply(runs, function(r) list(r$repetitions$y_bar)), expression(bar(y)[N]~"（万円）"), blue, "反復結果",
+    histogram_pair("means", lapply(runs, function(r) list(r$repetitions$y_bar)), "各調査の平均所得（万円）", blue, "各回の平均所得",
       lapply(runs, function(r) number(r, "mu")), "母平均", densities = densities,
       density_labels = function(r) if (setting(r, "distribution") == "normal") "標本平均の正規密度" else "正規近似の密度",
       extra_range = lapply(runs, function(r) number(r, "mu") + c(-4, 4) * metric(r, "theory_sd")))
@@ -198,7 +208,7 @@ econometrics_compare <- function(kind, reference, current) {
     histogram_pair("coefficients", samples, "経験年数の係数（万円／年）", c(orange, blue),
       function(r) c(paste0("N = ", number(r, "N")), paste0("4N = ", 4 * number(r, "N"))),
       lapply(runs, function(r) number(r, "beta1")), "生成式の係数")
-    histogram_pair("standardized", lapply(large, function(d) list(d$standardized)), "中心化・標準化したOLS係数", blue, function(r) paste0("4N = ", 4 * number(r, "N")),
+    histogram_pair("standardized", lapply(large, function(d) list(d$standardized)), "標準化した係数の推定誤差", blue, function(r) paste0("4N = ", 4 * number(r, "N")),
       densities = list(dnorm, dnorm), density_labels = "標準正規密度", extra_range = c(-4, 4))
     for (ratio in c(FALSE, TRUE)) {
       xx <- lapply(1:2, function(i) if (ratio) large[[i]]$ratio_linear - metric(runs[[i]], "ratio_target") else large[[i]]$influence_scaled)

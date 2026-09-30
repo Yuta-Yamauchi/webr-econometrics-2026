@@ -116,12 +116,13 @@ h_full <- hist(estimates["full", ], breaks = breaks, plot = FALSE)
 plot(h_raw, freq = FALSE, col = adjustcolor(orange, .5), border = "white",
      ylim = c(0, max(h_raw$density, h_full$density) * 1.3),
      main = sprintf("同じ確率モデルから得る%d組の係数", B),
-     xlab = "教育年数の係数", ylab = "密度")
+     xlab = "教育年数の係数（万円／年）", ylab = "密度")
 plot(h_full, freq = FALSE, col = adjustcolor(blue, .5), border = "white", add = TRUE)
 abline(v = raw_target, col = orange, lty = 2, lwd = 2)
 abline(v = beta, col = blue, lty = 2, lwd = 2)
-legend("topright", c("単回帰の反復結果", "重回帰の反復結果", "単回帰の母集団係数", "同じ地域内の係数 beta"),
-       col = c(orange, blue, orange, blue), lty = c(1, 1, 2, 2), lwd = c(7, 7, 2, 2),
+legend("topright", c("単回帰の推定値", "重回帰の推定値", "単回帰の母集団係数", "生成式の係数 beta"),
+       col = c(orange, blue, orange, blue), pch = c(15, 15, NA, NA), pt.cex = 1.4,
+       lty = c(NA, NA, 2, 2), lwd = 2,
        bty = "n", cex = .95, y.intersp = 1.2)
 
 result <- list(
@@ -142,11 +143,11 @@ result <- list(
   data = data.frame(i = seq_len(nrow(dat)), dat),
   repetitions = data.frame(b = seq_len(B), raw = estimates["raw", ], full = estimates["full", ]),
   groups = groups,
-  plot_titles = c("地域差を含む比較", "同じ人の値・地域平均との差", "係数の標本変動"),
+  plot_titles = c("1人ずつの教育年数と所得", "同じ人の値・地域平均との差", "調査ごとに推定した教育年数の係数"),
   plot_notes = c(
-    "色の付いた直線は生成式の条件付き平均であり，傾きはbetaである。全体の単回帰は地域内の違いと地域間の違いを一緒に使う。",
-    "白抜きの丸は地域A・Bの一人ずつであり，左右で同じ人を示す。菱形からの矢印は教育年数・所得の平均との差である。地域の平均を引くと菱形は原点へ移り，矢印の長さ・向きは保たれる。右の黒線は二つの残差の回帰直線である。",
-    "棒は標本を作り直したときの係数の分布，破線は母集団の係数である。")
+    sprintf("各地域%d人・合計%d人の標本。青い丸は地域Aの1人，橙の三角は地域Bの1人。青・橙の実線は各地域の生成式で決まる平均所得。黒い破線は二つの地域をまとめて推定した単回帰の直線。", n_group, 2 * n_group),
+    "左右で同じ人を示す。左は本人の教育年数と所得，右は本人の値から地域の標本平均を引いた値。青い丸は地域A，橙の三角は地域B。白抜きの丸は各地域から選んだ1人，菱形は地域の標本平均。矢印は地域の標本平均から本人までの差。右の黒線は所得の平均との差を教育年数の平均との差に回帰した直線。",
+    sprintf("各地域%d人の調査を%d回繰り返し，各回で係数を求めた分布。橙の棒は単回帰，青い棒は地域を説明変数に加えた重回帰。橙の破線は単回帰の母集団係数，青い破線は生成式の係数β。縦軸は密度で，棒の面積が各区間の割合を表す。", n_group, B))
 )
 print(result$metrics[, c("label", "value")], row.names = FALSE)
 invisible(result)

@@ -67,7 +67,7 @@ xx <- seq(limits[1], limits[2], length.out = 1000)
 plot(hh, freq = FALSE, col = "#D9E8EF", border = "white", xlim = limits,
      ylim = c(0, max(hh$density, dnorm(xx, mu, standard_error)) * 1.18),
      main = sprintf("標本平均の分布：%d標本の平均", B),
-     xlab = expression(bar(y)[N]), ylab = "密度")
+     xlab = "各調査の平均所得（万円）", ylab = "密度")
 lines(xx, dnorm(xx, mu, standard_error), col = orange, lwd = 2.5)
 abline(v = mu, col = ink, lty = 2, lwd = 2)
 legend("topright", c(normal_label, "母平均"), col = c(orange, ink),
@@ -98,11 +98,11 @@ result <- list(
               mean(standardized), sd(standardized))),
   data = data.frame(i = seq_len(N), y = y),
   repetitions = data.frame(b = seq_len(B), y_bar = means, standardized = standardized),
-  plot_titles = c("母集団・一つの標本", "標本平均の標本分布", "中心化・拡大と正規近似"),
+  plot_titles = c("1回の調査で得た個人の所得", "調査を繰り返して得た平均所得の分布", "標本平均の推定誤差を標準化した分布"),
   plot_notes = c(
-    "棒はN個の所得，青線は母集団の密度，橙線は今回の標本平均である。単位は万円である。",
-    "横軸は各標本の平均所得（万円）である。棒はB回の反復結果を示す。",
-    "横軸は√N(標本平均 − μ)/σ，橙線は標準正規密度である。")
+    sprintf("1回の調査で得た%d人の所得を青い棒で集計している。青い曲線は母集団の所得分布，黒い縦の破線は母平均μ，橙の縦線は今回の標本平均。縦軸は密度で，棒の面積が各区間の割合を表す。", N),
+    sprintf("1回%d人の調査を%d回繰り返し，各回の平均所得を青い棒で集計している。橙の曲線は%s，黒い縦の破線は母平均μ。縦軸は密度で，棒の面積が各区間の割合を表す。", N, B, if (distribution == "normal") "標本平均の理論上の正規分布" else "標本平均の分布の正規近似"),
+    sprintf("各回の標本平均から母平均μを引き，標本平均の標準偏差σ/√Nで割った%d個の値の分布。橙の曲線は平均0・分散1の標準正規分布。縦軸は密度で，棒の面積が各区間の割合を表す。", B))
 )
 print(result$metrics[, c("label", "value")], row.names = FALSE)
 invisible(result)

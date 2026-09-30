@@ -26,7 +26,7 @@ function positionTip(record) {
   const size = record.tip.getBoundingClientRect();
   const below = bottomEdge - rect.bottom;
   const above = rect.top - topEdge;
-  const top = below >= size.height + 8 || below >= above ? rect.bottom + 8 : rect.top - size.height - 8;
+  const top = above >= size.height + 8 || above >= below ? rect.top - size.height - 8 : rect.bottom + 8;
   record.tip.style.left = `${Math.max(leftEdge, Math.min(rect.left, rightEdge - size.width))}px`;
   record.tip.style.top = `${Math.max(topEdge, Math.min(top, bottomEdge - size.height))}px`;
 }
@@ -65,6 +65,7 @@ function connect(triggers, text, { owner, anchor, title, toggle }) {
     });
     target.addEventListener('pointerleave', () => { record.hovered.delete(target); scheduleHide(record); });
     target.addEventListener('focus', () => show(record));
+    target.addEventListener('input', dismissTooltips);
     target.addEventListener('blur', () => {
       record.pinned = false;
       scheduleHide(record);

@@ -73,8 +73,9 @@ plot(hs, freq = FALSE, col = adjustcolor(orange, .45), border = "white",
      main = "経験年数のOLS係数", xlab = "係数（万円／年）", ylab = "密度")
 plot(hl, freq = FALSE, col = adjustcolor(blue, .45), border = "white", add = TRUE)
 abline(v = beta1, col = ink, lty = 2, lwd = 2)
-legend("topright", c(paste0("N = ", N), paste0("N = ", 4*N), "生成式の係数"),
-       col = c(orange, blue, ink), lty = c(1, 1, 2), lwd = c(7, 7, 2), bty = "n", cex = .9)
+legend("topright", c(paste0("N = ", N), paste0("4N = ", 4*N), "生成式の係数"),
+       col = c(orange, blue, ink), pch = c(15, 15, NA), pt.cex = 1.4,
+       lty = c(NA, NA, 2), lwd = 2, bty = "n", cex = .9)
 
 par(mfrow = c(1, 2), mar = c(4.5, 4.3, 3, .8), cex = .85)
 z_limits <- range(repetitions$standardized, -4, 4)
@@ -84,7 +85,7 @@ for (n in sizes) {
   hh <- hist(zz, breaks = "FD", plot = FALSE)
   plot(hh, freq = FALSE, col = "#D9E8EF", border = "white", xlim = z_limits,
        ylim = c(0, max(hh$density, dnorm(xx)) * 1.2), main = paste0("N = ", n),
-       xlab = "中心化・標準化したOLS係数", ylab = "密度")
+       xlab = "標準化した係数の推定誤差", ylab = "密度")
   lines(xx, dnorm(xx), col = orange, lwd = 2)
   legend("topright", "標準正規密度", col = orange, lty = 1, lwd = 2, bty = "n", cex = .8)
 }
@@ -127,10 +128,11 @@ result <- list(
               median(abs(small$ratio - small$ratio_linear)), median(abs(large$ratio - large$ratio_linear)))),
   data = data.frame(i = seq_len(N), x1 = dat$X[, 2], x2 = dat$X[, 3], y = dat$y, u = dat$u),
   repetitions = repetitions,
-  plot_titles = c("標本数・係数の分布", "中心化・標準化した係数", "OLSの一次近似", "係数比の一次近似"),
-  plot_notes = c("各標本で説明変数と所得の誤差を新しく生成する。",
-                 "√N(β̂₁ − β₁)を，V = σ²Q⁻¹の経験年数係数に対応する対角要素の平方根で割っている。",
-                 "横軸はQ⁻¹X′u/N，縦軸はβ̂ − βの経験年数成分をそれぞれ√N倍した値である。破線は両者が等しい位置である。",
-                 "横軸は係数比の一次近似，縦軸はβ̂₁/β̂₂ − β₁/β₂である。H = (0, 1/β₂, −β₁/β₂²)。破線は両者が等しい位置である。"))
+  plot_titles = c("調査人数別の経験年数係数の分布", "経験年数係数の推定誤差を標準化した分布", "OLSの推定誤差と一次近似", "係数比の推定誤差と一次近似"),
+  plot_notes = c(
+    sprintf("%d人の調査を橙，%d人の調査を青で示す。調査を各%d回繰り返し，各回で推定した経験年数の係数を棒で集計している。黒い縦の破線は生成式の係数。縦軸は密度で，棒の面積が各区間の割合を表す。", N, 4*N, B),
+    sprintf("左は%d人，右は%d人の調査を各%d回繰り返した結果。青い棒は経験年数係数の推定値から設定値を引き，漸近理論の標準偏差で割った値の分布。橙の曲線は平均0・分散1の標準正規分布。縦軸は密度で，棒の面積が各区間の割合を表す。", N, 4*N, B),
+    sprintf("左は%d人，右は%d人の調査。点1つが1回の調査で，各図に%d点ある。横軸は母集団の二次モーメントQを使った一次近似，縦軸は経験年数係数の実際の推定誤差。両軸とも各調査の人数の平方根をかけた値。破線は両者が等しい位置。", N, 4*N, B),
+    sprintf("係数比は経験年数の係数を勤続年数の係数で割った値。左は%d人，右は%d人の調査で，各図に%d回の結果を示す。点1つが1回の調査。横軸はデルタ法による一次近似，縦軸は推定した係数比から生成式の係数比を引いた値。破線は両者が等しい位置。", N, 4*N, B)))
 print(result$metrics[, c("label", "value")], row.names = FALSE)
 invisible(result)

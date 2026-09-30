@@ -1,0 +1,48 @@
+import assert from 'node:assert/strict';
+import {journeys, journeyParameters} from '../journeys.js';
+import {guidance, parameterChanges} from '../guidance.js';
+import {lessons} from '../lessons.js';
+
+const cases = [];
+for (const lesson of lessons) {
+  const config = journeys[lesson.id], records = [];
+  assert.equal(config.steps.length, 3);
+  assert(guidance[lesson.id].views.some(v => v.id === config.view));
+  for (let index = 0; index <= config.steps.length; index++) {
+    const params = journeyParameters(lesson, index, records);
+    const step = index ? config.steps[index - 1] : null;
+    if (step) {
+      assert(step.reference < index);
+      assert(!step.title.includes('，') && !step.title.includes('、'));
+      assert(guidance[lesson.id].views.some(v => v.id === step.view));
+      if (step.extraView) assert(guidance[lesson.id].views.some(v => v.id === step.extraView));
+      const before = records[step.reference].params;
+      assert.deepEqual(parameterChanges(lesson.fields, before, params).map(c => c.field.key), [step.key]);
+      assert.equal(params.seed, before.seed);
+      const field = lesson.fields.find(f => f.key === step.key);
+      assert(field);
+      if (field.options) assert(field.options.some(([value]) => value === params[step.key]));
+      else assert(params[step.key] >= field.min && params[step.key] <= field.max);
+      const saved = JSON.stringify(records);
+      const chosen = field.options ? field.options[0][0] : field.min;
+      assert.equal(journeyParameters(lesson, index, records, chosen)[step.key], chosen);
+      assert.equal(JSON.stringify(records), saved);
+    }
+    records.push({params});
+    cases.push({lesson:lesson.id,index,params,reference:step?.reference ?? null});
+  }
+}
+
+// 入力した値を次の段階へ引き継ぎ，分岐では指定した比較相手へ戻る。
+const sampling = lessons.find(x => x.id === 'sampling');
+const base = {params:journeyParameters(sampling,0,[])};
+const edited = {params:journeyParameters(sampling,1,[base],150)};
+assert.equal(journeyParameters(sampling,2,[base,edited]).N,400);
+assert.equal(journeyParameters(sampling,3,[base,edited]).N,25);
+assert.equal(journeyParameters(sampling,3,[base,edited]).distribution,'normal');
+const survey = lessons.find(x => x.id === 'survey');
+const initial = {params:journeyParameters(survey,0,[])};
+const nonresponse = {params:journeyParameters(survey,1,[initial],.3)};
+assert.equal(journeyParameters(survey,2,[initial,nonresponse]).r1,.3);
+
+console.log(JSON.stringify({status:'passed',modules:lessons.length,steps:cases.length,cases}));

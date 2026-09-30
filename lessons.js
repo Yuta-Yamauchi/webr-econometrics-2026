@@ -3,27 +3,27 @@ export const lessons = [
   {
     "id": "survey",
     "short": "第1回 所得調査",
-    "title": "回答者の平均は誰の所得を表すか",
+    "title": "回答者の平均は地域全体の平均か？",
     "course": "第1回・母集団と標本",
     "file": "r/01_income_survey.R",
-    "intro": "地域の就業支援策を検討するため，働く人々の平均年間所得を調べる場面を想定する。調査へ招待した人と回答した人を区別し，母集団（population）の構成と標本（sample）の構成を比較する。",
+    "intro": "地域全体の平均所得を，調査への回答から推定する。母集団（population）と標本（sample）を，回答の集まり方を変えて比べる。",
     "model": [
       "y_i=\\mu_0+\\gamma a_i+u_i",
       "\\Pr(a_i=1)=p",
       "\\Pr(R_i=1\\mid a_i=g)=r_g"
     ],
-    "assumptions": "aは地域Aで0・地域Bで1，Rは回答した場合に1となる。年間所得yの単位は万円である。u = σ(e − 1)，e ∼ Exp(1) とし，地域・回答の抽選から独立に生成する。N人を母集団から独立に抽出して調査へ招待する。",
+    "assumptions": "aは地域Aで0・地域Bで1，Rは回答した場合に1となる。年間所得yの単位は万円である。u = σ(e − 1)，e ∼ Exp(1) とし，地域・回答の抽選から独立に生成する。N人を母集団から独立に抽出して調査を依頼する。",
     "fields": [
       {
         "key": "N",
-        "label": "招待する人数 N",
+        "label": "調査を依頼する人数 N",
         "value": 300,
         "min": 50,
         "max": 5000,
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "1回の調査へ招待する人数である。各人が回答するかどうかは別に抽選するため，実際の回答者数はN人以下となる。"
+        "help": "1回の調査を依頼する人数。各人が回答するかどうかを別に抽選するため，回答者はN人以下となる。"
       },
       {
         "key": "B",
@@ -33,8 +33,8 @@ export const lessons = [
         "max": 2000,
         "step": 1,
         "integer": true,
-        "hint": "標本生成・推定を繰り返す回数",
-        "help": "N人を抽出し，所得と回答を生成する調査全体をB回繰り返す。反復回数（Monte Carlo replications）を指定する。"
+        "hint": "",
+        "help": "人数Nの調査を繰り返す回数（Monte Carlo replications）。毎回，所得と回答の有無を生成する。"
       },
       {
         "key": "p",
@@ -45,7 +45,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "母集団（population）で地域Bに住む人の割合である。0.4なら地域Bが40％，地域Aが60％となる。"
+        "help": "母集団で地域Bに住む人の割合。0.4なら地域Bが40％，地域Aが60％となる。"
       },
       {
         "key": "mu0",
@@ -56,7 +56,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "地域Aの平均年間所得である。単位は万円であり，地域Bの平均はこの値に所得差γを加えた値となる。"
+        "help": "地域Aの平均年間所得。地域Bの平均所得は，この値にγを加えた額となる。単位は万円。"
       },
       {
         "key": "gap",
@@ -67,7 +67,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "地域Bの平均所得から地域Aの平均所得を引いた値である。γ=120なら，地域Bの平均が120万円高い設定となる。"
+        "help": "地域Bの平均所得から地域Aの平均所得を引いた額。γ=120なら，地域Bが120万円高い。"
       },
       {
         "key": "sigma",
@@ -78,7 +78,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "同じ地域の中での所得の標準偏差（standard deviation）である。生成式u=σ(e−1)のσを指定する。単位は万円である。"
+        "help": "同じ地域の所得の標準偏差（standard deviation）。生成式u=σ(e−1)のσに当たり，単位は万円。"
       },
       {
         "key": "r0",
@@ -89,7 +89,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "招待された地域Aの人が回答する確率である。0.6は各人が60％の確率で回答する設定である。"
+        "help": "調査を依頼された地域Aの人が回答する確率。0.6なら60％となる。"
       },
       {
         "key": "r1",
@@ -100,7 +100,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "招待された地域Bの人が回答する確率である。所得の誤差とは，地域を与えた下で独立に回答を抽選する。"
+        "help": "調査を依頼された地域Bの人が回答する確率。同じ地域では，回答の有無と所得の誤差を独立に生成する。"
       },
       {
         "key": "seed",
@@ -111,7 +111,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）は乱数列の開始点を指定する値である。同じコード・設定・シードを使うと，同じ生成データを再現できる。"
+        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
       }
     ],
     "scenarios": [
@@ -131,8 +131,8 @@ export const lessons = [
       },
       {
         "id": "large",
-        "name": "回答確率の違い・多い招待者",
-        "description": "回答確率の違いを保ち，招待者を3000人にする。",
+        "name": "回答確率の違い・多い調査依頼",
+        "description": "回答確率の違いを保ち，調査を依頼する人数を3000人にする。",
         "params": {
           "r1": 0.2,
           "N": 3000
@@ -162,10 +162,10 @@ export const lessons = [
   {
     "id": "prediction",
     "short": "第2回 所得の予測",
-    "title": "教育年数が分かると所得予測はどう変わるか",
+    "title": "教育年数から所得を予測できるか？",
     "course": "第2回・条件付き期待値と線形射影",
     "file": "r/02_income_prediction.R",
-    "intro": "就業支援の対象者について，教育年数から年間所得を予測する場面を想定する。全員に同じ平均を使う予測，教育年数別の条件付き期待値（conditional expectation），少数の係数を使う線形射影（linear projection）を比較する。",
+    "intro": "教育年数から個人の所得を予測する。教育年数別の平均である条件付き期待値（conditional expectation）と，直線による予測である線形射影（linear projection）を比べる。",
     "model": [
       "y_i=100+20s_i+\\kappa(s_i-12)^2+\\varepsilon_i",
       "s_i\\in\\{9,12,14,16\\}"
@@ -181,7 +181,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "母集団から独立に生成する人数である。このN人の教育年数と所得から，OLSの直線を1本求める。"
+        "help": "調査する人数。このN人の教育年数と所得を使い，OLSで直線を求める。"
       },
       {
         "key": "curvature",
@@ -192,18 +192,18 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "条件付き平均m(s)=100+20s+κ(s−12)²の二次項の係数である。κ=0では平均関数が直線となる。"
+        "help": "平均関数m(s)=100+20s+κ(s−12)²の二次項の係数。κ=0なら，教育年数と平均所得は直線の関係になる。"
       },
       {
         "key": "p",
-        "label": "14・16年の人口比率 p",
+        "label": "教育年数14・16年の人の割合 p",
         "value": 0.4,
         "min": 0.05,
         "max": 0.95,
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "教育年数14年・16年の人の合計比率である。それぞれp/2，9年・12年の人はそれぞれ(1−p)/2とする。"
+        "help": "教育年数14年・16年の人の合計割合。各p/2とし，9年・12年の人は各(1−p)/2とする。"
       },
       {
         "key": "sigma",
@@ -214,7 +214,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "同じ教育年数の人の所得の標準偏差である。平均関数m(s)に加える正規誤差εの標準偏差を，万円単位で指定する。"
+        "help": "同じ教育年数の人の所得の標準偏差。平均関数m(s)に加える正規誤差εの標準偏差で，単位は万円。"
       },
       {
         "key": "seed",
@@ -225,7 +225,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）は乱数列の開始点を指定する値である。同じコード・設定・シードを使うと，同じ生成データを再現できる。"
+        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
       }
     ],
     "scenarios": [
@@ -274,10 +274,10 @@ export const lessons = [
   {
     "id": "auxiliary",
     "short": "第3回 補助回帰",
-    "title": "地域の違いを除くと何が残るか",
+    "title": "全体と地域内で関係は同じか？",
     "course": "第3回・二地域の教育年数と所得",
     "file": "r/03_auxiliary_regression.R",
-    "intro": "教育年数と所得の関係を，賃金水準の異なる二つの地域をまとめて調べる場面を想定する。全体の単回帰（simple regression）と，地域差を除く補助回帰（auxiliary regression）を比較する。",
+    "intro": "教育年数と所得の関係を，二つの地域で調べる。全体の単回帰（simple regression）と，地域平均との差を使う補助回帰（auxiliary regression）を比べる。",
     "model": [
       "d_i=12+\\delta a_i+v_i",
       "y_i=100+\\beta d_i+\\gamma a_i+u_i"
@@ -293,7 +293,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "総標本数はこの2倍",
-        "help": "地域A・Bのそれぞれから抽出する人数である。80なら地域Aが80人，地域Bが80人で，総標本数Nは160となる。"
+        "help": "地域A・Bからそれぞれ調べる人数。80なら合計160人となる。"
       },
       {
         "key": "delta",
@@ -304,7 +304,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "年",
-        "help": "地域BとAの平均教育年数の差である。生成式d=12+δa+vに入り，δ=2なら地域Bの平均教育年数が2年長い設定となる。"
+        "help": "地域Bの平均教育年数から地域Aの平均教育年数を引いた値。δ=2なら，地域Bが2年長い。"
       },
       {
         "key": "beta",
@@ -315,7 +315,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円／年",
-        "help": "同じ地域で教育年数が1年異なる二人の条件付き平均所得の差である。生成式のβを万円／年で指定する。"
+        "help": "同じ地域で教育年数が1年異なるときの平均所得の差。生成式y=100+βd+γa+uのβに当たり，単位は万円／年。"
       },
       {
         "key": "gamma",
@@ -326,7 +326,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "教育年数が同じときの所得差（万円）",
-        "help": "教育年数を同じにしたときの，地域BとAの条件付き平均所得の差である。生成式y=100+βd+γa+uのγを万円単位で指定する。"
+        "help": "教育年数が同じときの，地域Bと地域Aの平均所得の差。正なら地域Bが高く，負なら低い。単位は万円。"
       },
       {
         "key": "sigma_v",
@@ -337,7 +337,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "年",
-        "help": "同じ地域内の教育年数の標準偏差である。生成式d=12+δa+vのvの標準偏差を，年単位で指定する。"
+        "help": "同じ地域の教育年数の標準偏差。生成式d=12+δa+vのvの標準偏差で，単位は年。"
       },
       {
         "key": "sigma_u",
@@ -348,7 +348,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "教育年数と地域が同じ人の所得の標準偏差である。所得に加える誤差uの標準偏差を，万円単位で指定する。"
+        "help": "教育年数と地域が同じ人の所得の標準偏差。所得の誤差uの標準偏差で，単位は万円。"
       },
       {
         "key": "B",
@@ -358,8 +358,8 @@ export const lessons = [
         "max": 2000,
         "step": 1,
         "integer": true,
-        "hint": "標本生成・推定を繰り返す回数",
-        "help": "各地域の人数を固定し，教育年数の誤差vと所得の誤差uを新しく生成して，回帰係数をB回求める。"
+        "hint": "",
+        "help": "回帰係数を計算する回数。各地域の人数を固定し，教育年数の誤差vと所得の誤差uを毎回生成する。"
       },
       {
         "key": "seed",
@@ -370,7 +370,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）は乱数列の開始点を指定する値である。同じコード・設定・シードを使うと，同じ生成データを再現できる。"
+        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
       }
     ],
     "scenarios": [
@@ -382,8 +382,8 @@ export const lessons = [
       },
       {
         "id": "no_income_gap",
-        "name": "所得の地域差なし",
-        "description": "γだけを0にする。",
+        "name": "教育年数が同じなら所得差なし",
+        "description": "教育年数をそろえたときの地域間の所得差γを0にする。",
         "params": {
           "gamma": 0
         }
@@ -398,7 +398,7 @@ export const lessons = [
       },
       {
         "id": "large",
-        "name": "同じ地域差・多い観測",
+        "name": "同じ地域差・多い標本",
         "description": "各地域の人数を320人にする。",
         "params": {
           "n_group": 320
@@ -427,10 +427,10 @@ export const lessons = [
   {
     "id": "precision",
     "short": "第3回 係数の精度",
-    "title": "経験年数・勤続年数の係数はどの程度安定するか",
+    "title": "二つの説明変数の係数を分けて推定できるか？",
     "course": "第3回・行列OLSと固定した説明変数",
     "file": "r/03_ols_precision.R",
-    "intro": "賃金データで，経験年数と現在の企業での勤続年数を同時に使う場面を想定する。説明変数の相関と人数を変更し，最小二乗法（ordinary least squares，OLS）による係数の分布を表示する。",
+    "intro": "経験年数と勤続年数を使って所得を説明する。二つの年数の関係と調査人数を変え，最小二乗法（ordinary least squares，OLS）で係数を求める。",
     "model": [
       "y_i=200+\\beta_1x_{i1}+\\beta_2x_{i2}+u_i",
       "\\hat{\\boldsymbol{\\beta}}=(\\mathbf{X}^{\\prime}\\mathbf{X})^{-1}\\mathbf{X}^{\\prime}\\mathbf{y}"
@@ -446,7 +446,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "説明変数を最初に生成する人数である。反復中は，このN人の経験年数と勤続年数を固定する。"
+        "help": "調査する人数。反復中は，このN人の経験年数と勤続年数を固定する。"
       },
       {
         "key": "B",
@@ -456,8 +456,8 @@ export const lessons = [
         "max": 2000,
         "step": 1,
         "integer": true,
-        "hint": "標本生成・推定を繰り返す回数",
-        "help": "説明変数Xを固定し，所得の誤差uだけを生成し直して，OLSをB回計算する。"
+        "hint": "",
+        "help": "回帰係数を計算する回数。説明変数Xを固定し，所得の誤差uを毎回生成する。"
       },
       {
         "key": "rho",
@@ -468,7 +468,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "経験年数と勤続年数の母相関（population correlation）である。生成式で二つの年数が同じ方向に動く度合いを指定する。一つの標本の相関は乱数によって変わる。"
+        "help": "経験年数と勤続年数の母相関（population correlation）。値が1に近いほど，二つの年数は強い正の相関を持つ。標本の相関は抽出ごとに異なる。"
       },
       {
         "key": "beta1",
@@ -479,7 +479,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円／年",
-        "help": "勤続年数を同じにしたとき，経験年数が1年異なる二人の条件付き平均所得の差である。単位は万円／年であり，生成式の係数を指定する。"
+        "help": "勤続年数が同じ人の間で，経験年数が1年異なるときの平均所得の差。単位は万円／年。"
       },
       {
         "key": "beta2",
@@ -490,7 +490,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円／年",
-        "help": "経験年数を同じにしたとき，勤続年数が1年異なる二人の条件付き平均所得の差である。単位は万円／年であり，生成式の係数を指定する。"
+        "help": "経験年数が同じ人の間で，勤続年数が1年異なるときの平均所得の差。単位は万円／年。"
       },
       {
         "key": "sigma",
@@ -501,7 +501,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "経験年数と勤続年数が同じ人の所得の標準偏差である。正規誤差uの標準偏差を，万円単位で指定する。"
+        "help": "経験年数と勤続年数が同じ人の所得の標準偏差。正規誤差uの標準偏差で，単位は万円。"
       },
       {
         "key": "seed",
@@ -512,7 +512,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）は乱数列の開始点を指定する値である。同じコード・設定・シードを使うと，同じ生成データを再現できる。"
+        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
       }
     ],
     "scenarios": [
@@ -532,7 +532,7 @@ export const lessons = [
       },
       {
         "id": "large",
-        "name": "高い相関・多い観測",
+        "name": "高い相関・多い標本",
         "description": "ρ = 0.95を保ち，人数を320にする。",
         "params": {
           "rho": 0.95,
@@ -562,10 +562,10 @@ export const lessons = [
   {
     "id": "sampling",
     "short": "第4回 平均の分布",
-    "title": "平均所得は標本数を増やすとどう安定するか",
+    "title": "平均所得の推定は何人で安定するか？",
     "course": "第4回・大数の法則と中心極限定理",
     "file": "r/01_sampling.R",
-    "intro": "所得調査から平均所得を推定する場面を想定する。所得分布と人数を変更し，大数の法則（law of large numbers）・中心極限定理（central limit theorem）に対応する標本平均の分布を表示する。",
+    "intro": "同じ母集団から調査を繰り返し，標本平均の分布を調べる。人数を変え，大数の法則（law of large numbers）と中心極限定理（central limit theorem）に対応する分布を表示する。",
     "model": [
       "y_i=\\mu+\\sigma z_i",
       "E[z_i]=0",
@@ -591,7 +591,7 @@ export const lessons = [
             "一様分布"
           ]
         ],
-        "help": "所得y=μ+σzの分布の形を選ぶ。zはどの選択肢でも平均0・分散1にそろえているため，μとσの意味は共通である。"
+        "help": "所得y=μ+σzの分布を選ぶ。どの分布でもzの平均は0，分散は1とする。"
       },
       {
         "key": "N",
@@ -602,7 +602,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "1回の所得調査で抽出する人数，標本数（sample size）である。このN人の所得から標本平均を一つ計算する。"
+        "help": "1回の調査で抽出する人数，標本数（sample size）。このN人の所得から平均を計算する。"
       },
       {
         "key": "B",
@@ -613,7 +613,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "N人の抽出と平均の計算を繰り返す回数",
-        "help": "N人の所得の生成と標本平均の計算をB回繰り返す。ヒストグラムにはB個の標本平均を使う。"
+        "help": "調査を繰り返す回数。N人を抽出して平均を求め，B個の標本平均をヒストグラムにする。"
       },
       {
         "key": "mu",
@@ -624,7 +624,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "所得を生成する母集団の平均（population mean）である。単位は万円であり，y=μ+σzの中心を指定する。"
+        "help": "母集団の平均所得（population mean）。単位は万円。"
       },
       {
         "key": "sigma",
@@ -635,7 +635,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "所得を生成する母集団の標準偏差（population standard deviation）である。単位は万円であり，母分散はσ²となる。"
+        "help": "母集団の所得の標準偏差（population standard deviation）。単位は万円で，母分散はσ²となる。"
       },
       {
         "key": "seed",
@@ -646,14 +646,14 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）は乱数列の開始点を指定する値である。同じコード・設定・シードを使うと，同じ生成データを再現できる。"
+        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
       }
     ],
     "scenarios": [
       {
         "id": "base",
         "name": "25人の所得調査",
-        "description": "母平均400万円・標準偏差100万円の仮想的な所得分布。",
+        "description": "母平均400万円・標準偏差100万円の仮想の所得分布。",
         "params": {}
       },
       {
@@ -682,7 +682,7 @@ export const lessons = [
       },
       {
         "id": "more_repetitions",
-        "name": "同じ25人・多い反復",
+        "name": "同じ25人・反復回数を増やした調査",
         "description": "Nを25に保ち，反復回数Bを4000にする。",
         "params": {
           "B": 4000
@@ -703,15 +703,15 @@ export const lessons = [
   {
     "id": "asymptotic",
     "short": "第4回 OLS・デルタ法",
-    "title": "所得の係数・係数比はどう近似できるか",
+    "title": "回帰係数と係数比の分布を近似できるか？",
     "course": "第4回・OLSの漸近理論とデルタ法",
     "file": "r/04_ols_asymptotics.R",
-    "intro": "賃金データから，経験年数と勤続年数の係数・係数比を求める場面を想定する。人数と誤差分布を変更し，OLSの漸近近似（asymptotic approximation）とデルタ法（delta method）の一次近似を表示する。",
+    "intro": "経験年数と勤続年数の係数を繰り返し推定する。係数には漸近近似（asymptotic approximation），係数比にはデルタ法（delta method）を使う。",
     "model": [
       "y_i=200+\\beta_1x_{i1}+\\beta_2x_{i2}+u_i",
       "h(\\boldsymbol{\\beta})=\\frac{\\beta_1}{\\beta_2}"
     ],
-    "assumptions": "経験年数・勤続年数の生成式は第3回の係数の精度と同じである。今回は説明変数と誤差を両方取り直す。u = σeとし，eは標準正規分布または平均1の指数分布を1だけ中心化した分布から独立に生成する。係数比の設定ではβ₂ > 0とする。",
+    "assumptions": "経験年数と勤続年数は，第3回の係数の精度と同じ生成式を使う。各反復で説明変数と誤差を両方生成する。u = σeとし，eは標準正規乱数，または平均1の指数乱数から1を引いた値とする。説明変数と誤差，各個人の観測は独立とする。係数比ではβ₂ > 0とする。",
     "fields": [
       {
         "key": "N",
@@ -722,7 +722,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "比較する小さい標本の人数である。同じ設定でN人と4N人を比較する。N=100なら100人と400人の標本を作る。"
+        "help": "二つの調査のうち，小さい方の人数。N人と4N人の調査を比べる。N=100なら100人と400人となる。"
       },
       {
         "key": "B",
@@ -732,8 +732,8 @@ export const lessons = [
         "max": 2000,
         "step": 1,
         "integer": true,
-        "hint": "標本生成・推定を繰り返す回数",
-        "help": "N人と4N人の各設定でB回ずつ反復する。毎回，説明変数Xと所得の誤差uの両方を新しく生成する。"
+        "hint": "",
+        "help": "N人と4N人の各調査を繰り返す回数。毎回，説明変数Xと所得の誤差uを両方生成する。"
       },
       {
         "key": "rho",
@@ -744,7 +744,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "",
-        "help": "経験年数と勤続年数の母相関（population correlation）である。生成式で二つの年数が同じ方向に動く度合いを指定する。一つの標本の相関は乱数によって変わる。"
+        "help": "経験年数と勤続年数の母相関（population correlation）。標本の相関は抽出ごとに異なる。"
       },
       {
         "key": "beta1",
@@ -755,7 +755,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円／年",
-        "help": "勤続年数を同じにしたとき，経験年数が1年異なる二人の条件付き平均所得の差である。単位は万円／年であり，生成式の係数を指定する。"
+        "help": "勤続年数が同じ人の間で，経験年数が1年異なるときの平均所得の差。単位は万円／年。"
       },
       {
         "key": "beta2",
@@ -766,7 +766,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円／年",
-        "help": "経験年数を同じにしたとき，勤続年数が1年異なる二人の条件付き平均所得の差である。単位は万円／年であり，生成式の係数を指定する。"
+        "help": "経験年数が同じ人の間で，勤続年数が1年異なるときの平均所得の差。単位は万円／年。"
       },
       {
         "key": "sigma",
@@ -777,7 +777,7 @@ export const lessons = [
         "step": "any",
         "integer": false,
         "hint": "万円",
-        "help": "説明変数を与えた下での所得の誤差uの標準偏差である。正規誤差と指数誤差で，同じσを万円単位で使う。"
+        "help": "経験年数と勤続年数が同じ人の所得の標準偏差。どちらの誤差分布でもσを使う。単位は万円。"
       },
       {
         "key": "error_dist",
@@ -793,7 +793,7 @@ export const lessons = [
             "正規分布"
           ]
         ],
-        "help": "所得の誤差u=σeの分布を選ぶ。eは標準正規分布，または平均1の指数分布から1を引いた分布であり，どちらも平均0・分散1となる。"
+        "help": "所得の誤差u=σeの分布を選ぶ。eは標準正規乱数，または平均1の指数乱数から1を引いた値とする。どちらも平均0・分散1となる。"
       },
       {
         "key": "seed",
@@ -804,7 +804,7 @@ export const lessons = [
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）は乱数列の開始点を指定する値である。同じコード・設定・シードを使うと，同じ生成データを再現できる。"
+        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
       }
     ],
     "scenarios": [

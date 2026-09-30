@@ -79,9 +79,10 @@ result <- list(
                     projection = drop(X %*% beta_projection), ols_fitted = drop(X %*% beta_ols), residual = residual),
   groups = data.frame(s = education, probability = probability, conditional_mean = m,
                       projection = linear_mean, conditional_projection_error = conditional_projection_error),
-  plot_titles = c("教育年数・所得", "三つの予測の二乗誤差", "条件付き平均・線形射影の差"),
-  plot_notes = c("点の横位置には重なりを避けるための微小なずれを加えている。計算には元の教育年数を使う。",
-                 "生成モデルから計算した期待値である。青はσ²，橙は平均関数と予測関数の差の二乗の期待値である。",
-                 "各教育年数における条件付き期待値から，母集団の線形射影の値を引いている。"))
+  plot_titles = c("教育年数と所得・予測に使う線", "三つの予測方法の平均二乗誤差", "教育年数別の平均所得と直線予測の差"),
+  plot_notes = c(
+    sprintf("灰色の点1つが1人を表す%d人の標本。点の横位置は重なりを避けるために少しずらしている。青い折れ線は生成式の条件付き期待値，橙の直線は母集団の線形射影，黒い破線は今回の標本のOLS，緑の水平線は母平均。", N),
+    "棒1本が一つの予測方法を表し，高さは母集団で計算した平均二乗誤差（MSE）。青い部分は同じ教育年数の中での所得の分散，橙の部分は教育年数別の平均所得と予測値の差の二乗を人口比率で平均した量。",
+    "棒1本が一つの教育年数を表す。高さは生成式で決まる平均所得から母集団の線形射影の予測値を引いた値。横軸は教育年数，縦軸の単位は万円。"))
 print(result$metrics[, c("label", "value")], row.names = FALSE)
 invisible(result)

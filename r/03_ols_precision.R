@@ -72,7 +72,8 @@ plot(hn, freq = FALSE, col = adjustcolor(orange, .45), border = "white",
 plot(hc, freq = FALSE, col = adjustcolor(blue, .45), border = "white", add = TRUE)
 abline(v = sigma^2, col = ink, lty = 2, lwd = 2)
 legend("topright", c("RSS / N", "RSS / (N − 3)", "誤差の分散 σ²"),
-       col = c(orange, blue, ink), lwd = c(7, 7, 2), lty = c(1, 1, 2), bty = "n", cex = .9)
+       col = c(orange, blue, ink), pch = c(15, 15, NA), pt.cex = 1.4,
+       lwd = 2, lty = c(NA, NA, 2), bty = "n", cex = .9)
 
 result <- list(
   settings = data.frame(setting = c("N", "B", "rho", "beta1", "beta2", "sigma", "seed"),
@@ -91,9 +92,10 @@ result <- list(
               max(abs(beta_hat - lm_beta)), max(abs(crossprod(X, residual))))),
   data = data.frame(i = seq_len(N), x1 = x1, x2 = x2, u = u, y = y, fitted = drop(X %*% beta_hat), residual = residual),
   repetitions = data.frame(b = seq_len(B), repeated),
-  plot_titles = c("説明変数の組合せ", "Xを固定した係数の標本分布", "残差分散の標本分布"),
-  plot_notes = c("同じN人の説明変数をすべての反復で使う。",
-                 "棒は反復結果，橙線はこのXの下での正規密度，破線は生成式の係数である。",
-                 "RSSは残差平方和である。推定する係数は定数項を含め3個である。"))
+  plot_titles = c("1人ずつの経験年数と勤続年数", "繰り返し推定した経験年数・勤続年数の係数", "残差から推定した誤差分散の分布"),
+  plot_notes = c(
+    sprintf("点1つが1人の経験年数と勤続年数を表す。表示した%d人の説明変数をすべての反復で使う。", N),
+    sprintf("%d人の説明変数を固定し，所得の誤差を%d回生成した推定値の分布。左は経験年数の係数，右は勤続年数の係数。青い棒は反復した推定値，橙の曲線はこの説明変数の下での理論上の正規分布，黒い縦の破線は生成式の係数。縦軸は密度で，棒の面積が各区間の割合を表す。", N, B),
+    sprintf("%d回の回帰で求めた残差平方和RSSを，Nで割った値が橙の棒，N−3で割った値が青い棒。3は定数項を含む係数の数。黒い縦の破線は生成式の誤差分散σ²。縦軸は密度で，棒の面積が各区間の割合を表す。", B)))
 print(result$metrics[, c("label", "value")], row.names = FALSE)
 invisible(result)
