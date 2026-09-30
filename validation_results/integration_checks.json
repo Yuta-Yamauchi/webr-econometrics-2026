@@ -1,0 +1,90 @@
+{
+  "status": "passed",
+  "presets": 26,
+  "native_webr_comparison": [
+    {
+      "experiment": "survey",
+      "max_absolute_difference": 0.0,
+      "status": "passed"
+    },
+    {
+      "experiment": "prediction",
+      "max_absolute_difference": 0.0,
+      "status": "passed"
+    },
+    {
+      "experiment": "auxiliary",
+      "max_absolute_difference": 0.0,
+      "status": "passed"
+    },
+    {
+      "experiment": "precision",
+      "max_absolute_difference": 0.0,
+      "status": "passed"
+    },
+    {
+      "experiment": "sampling",
+      "max_absolute_difference": 0.0,
+      "status": "passed"
+    },
+    {
+      "experiment": "asymptotic",
+      "max_absolute_difference": 0.0,
+      "status": "passed"
+    }
+  ],
+  "http": [
+    {
+      "file": "index.html",
+      "status": 200,
+      "content_type": "text/html"
+    },
+    {
+      "file": "app.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "file": "lessons.js",
+      "status": 200,
+      "content_type": "text/javascript; charset=utf-8"
+    },
+    {
+      "file": "simulation_settings.json",
+      "status": 200,
+      "content_type": "application/json"
+    },
+    {
+      "file": "r/01_income_survey.R",
+      "status": 200,
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "file": "r/02_income_prediction.R",
+      "status": 200,
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "file": "r/03_auxiliary_regression.R",
+      "status": 200,
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "file": "r/03_ols_precision.R",
+      "status": 200,
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "file": "r/01_sampling.R",
+      "status": 200,
+      "content_type": "text/plain; charset=utf-8"
+    },
+    {
+      "file": "r/04_ols_asymptotics.R",
+      "status": 200,
+      "content_type": "text/plain; charset=utf-8"
+    }
+  ],
+  "dom_ids": "passed",
+  "preset_parity": "passed"
+}

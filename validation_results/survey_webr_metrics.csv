@@ -1,0 +1,12 @@
+"key","label","value"
+"population_mean","母平均",348
+"response_target","回答者集団の平均・理論値",348
+"invited_mean","今回の招待者平均",350.403281471635
+"respondent_mean","今回の回答者平均",347.740594616714
+"respondents","今回の回答者数",178
+"population_share","母集団の地域B比率",0.4
+"response_share","回答者集団の地域B比率・理論値",0.4
+"sample_response_share","今回の回答者の地域B比率",0.432584269662921
+"mc_invited","招待者平均の反復平均",347.55792785467
+"mc_respondent","回答者平均の反復平均",347.796255888312
+"valid_repetitions","回答者平均を計算できた反復数",500
