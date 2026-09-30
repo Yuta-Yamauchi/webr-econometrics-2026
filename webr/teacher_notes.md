@@ -1,0 +1,81 @@
+# 第1〜4回のモデル・設定一覧
+
+所得の単位は万円，年数の単位は年である。生成式・地域・数値はすべて仮想設定とする。設定一覧は `simulation_settings.json`，実行コードは `r/` に収録する。
+
+| 講義・実験 | 初期設定 | 初期値からの変更メニュー |
+|---|---|---|
+| 第1回・所得調査 | N=300，B=500，p=0.4，μ₀=300，γ=120，σ=100，r₀=r₁=0.6，seed=101 | r₁=0.2／r₁=0.2・N=3000／r₁=0.2・γ=0 |
+| 第2回・所得の予測 | N=240，κ=3，p=0.4，σ=35，seed=202 | κ=0／p=0.8／N=2000 |
+| 第3回・補助回帰 | 各地域80人，δ=2，β=20，γ=80，σᵥ=1，σᵤ=15，B=300，seed=102 | γ=0／δ=0／各地域320人／σᵥ=0.25 |
+| 第3回・OLSの精度 | N=80，B=500，ρ=0.3，β₁=8，β₂=12，σ=60，seed=305 | ρ=0.95／ρ=0.95・N=320／N=12 |
+| 第4回・平均の分布 | N=25，B=1000，μ=400，σ=100，指数分布，seed=2026 | N=100／N=400／正規分布／B=4000 |
+| 第4回・OLS・デルタ法 | N=100，B=500，ρ=0.3，β₁=8，β₂=12，σ=40，指数誤差，seed=406 | 正規誤差／β₂=3／ρ=0.9 |
+
+## 第1回・所得調査
+
+地域を $a_i\in\{0,1\}$，回答を $R_i\in\{0,1\}$ とする。
+
+$$a_i\sim\mathrm{Bernoulli}(p),\quad y_i=\mu_0+\gamma a_i+u_i,\quad u_i=\sigma(e_i-1),\quad e_i\sim\mathrm{Exp}(1).$$
+
+N人を独立抽出する。eは地域から独立とし，地域gの回答確率をr_gとする。回答と所得の誤差は地域を与えた下で独立である。母平均はμ₀+pγ，回答者集団の地域B比率はq=pr₁/[(1−p)r₀+pr₁]，その平均所得はμ₀+qγである。
+
+各反復で地域・所得・回答を新しく生成する。回答者0人の回は回答者平均をNAとして保存し，計算できた反復数を表示する。図は地域構成，個人の所得，平均所得の標本分布である。
+
+## 第2回・所得の予測
+
+教育年数sを9・12・14・16年とし，人口比率を順に((1−p)/2,(1−p)/2,p/2,p/2)とする。
+
+$$y_i=m(s_i)+\varepsilon_i,\quad m(s)=100+20s+\kappa(s-12)^2,\quad \varepsilon_i\sim N(0,\sigma^2).$$
+
+誤差は教育年数と独立である。行ベクトル $\boldsymbol{x}_i=(1,s_i)$ を用い，母集団の線形射影係数を $E[\boldsymbol{x}_i'\boldsymbol{x}_i]^{-1}E[\boldsymbol{x}_i'y_i]$ で計算する。期待値は4つの教育年数に関する加重和で求める。図は散布図と予測関数，母集団の二乗予測誤差，教育年数別の射影誤差の平均である。
+
+## 第3回・補助回帰
+
+地域Aでa=0，地域Bでa=1とし，各地域から同数を抽出する。
+
+$$d_i=12+\delta a_i+v_i,\qquad y_i=100+\beta d_i+\gamma a_i+u_i,$$
+$$v_i\sim N(0,\sigma_v^2),\qquad u_i\sim N(0,\sigma_u^2).$$
+
+誤差間・個人間で独立とする。dとyをそれぞれ定数項・aへ補助回帰し，二つの残差による回帰を計算する。全体の単回帰・重回帰も計算する。両地域の母集団比率を1/2とした単回帰の係数はβ+γ(δ/4)/(σᵥ²+δ²/4)である。
+
+初期設定の標本は講義第3回と一致する。図は地域別の散布図，元の値・地域平均との差の対応，係数の標本分布である。対応図の白抜きの丸は左右で同じ人，菱形は地域の平均点を表す。
+
+## 第3回・OLSの精度
+
+独立な $v_i,w_i\sim U(-\sqrt3,\sqrt3)$ から経験年数x₁と勤続年数x₂を生成する。
+
+$$x_{i1}=20+6v_i,\qquad x_{i2}=5+1.5\{\rho v_i+\sqrt{1-\rho^2}w_i\},$$
+$$\boldsymbol{y}=X\boldsymbol{\beta}+\boldsymbol{u},\quad\boldsymbol{\beta}=(200,\beta_1,\beta_2)',\quad\boldsymbol{u}\mid X\sim N(\boldsymbol{0},\sigma^2 I_N).$$
+
+Xの各行は(1,xᵢ₁,xᵢ₂)であり，Xを固定してuだけを反復生成する。行列計算によるOLS，条件付き分散σ²(X′X)⁻¹，RSS/N，RSS/(N−3)を計算する。図は説明変数の散布図，係数の分布，残差分散の分布である。
+
+## 第4回・平均の分布
+
+$$y_i=\mu+\sigma z_i,\qquad E[z_i]=0,\quad\mathrm{Var}(z_i)=1.$$
+
+独立なzを，中心化した指数分布，標準正規分布，$U(-\sqrt3,\sqrt3)$ から生成する。N人の平均所得をB回計算する。図は個人の所得，標本平均，$\sqrt N(\bar y_N-\mu)/\sigma$ の分布である。
+
+## 第4回・OLS・デルタ法
+
+説明変数・係数は第3回のOLSの精度と同じモデルとし，反復ごとにXとuを新しく生成する。u/σには中心化した指数分布または標準正規分布を使い，Xから独立とする。N人と4N人でそれぞれB回反復する。
+
+$$Q=E[\boldsymbol{x}_i'\boldsymbol{x}_i],\quad V=\sigma^2Q^{-1},\quad\widehat{\boldsymbol{\beta}}-\boldsymbol{\beta}\simeq Q^{-1}X'\boldsymbol{u}/N.$$
+
+Qは説明変数の平均(1,20,5)，x₁の分散36，x₂の分散2.25，共分散9ρから求める。係数比とその一次近似は次で計算する。
+
+$$h(\boldsymbol{\beta})=\beta_1/\beta_2,\quad H=(0,1/\beta_2,-\beta_1/\beta_2^2),\quad h(\widehat{\boldsymbol{\beta}})-h(\boldsymbol{\beta})\simeq H(\widehat{\boldsymbol{\beta}}-\boldsymbol{\beta}).$$
+
+表のデルタ法標準偏差は $\sqrt{HVH'/N}$ である。図は係数の分布，中心化・標準化した係数，OLSの推定誤差と一次近似，係数比の推定誤差と一次近似である。
+
+## コード・出力
+
+設定画面はRファイルの `SETTINGS_BEGIN` と `SETTINGS_END` の間を置き換える。コード編集モードは編集欄の内容を実行する。WebRは毎回新しいR環境を作り，図はRの描画結果，表・CSVはRの `result` から取得する。保存済みの実行結果は `validation_results/` に収録する。
+
+## 参照文献・参照範囲
+
+1. 上級計量経済II・2026年度講義資料，第1回：母集団・標本，第2回：条件付き期待値・線形射影，第3回：OLS・補助回帰・分散推定，第4回：極限定理・OLSの漸近理論・デルタ法。`simulations/auxiliary_binary.R`：二地域モデルの生成式・初期値・シード。
+2. [厚生労働省・賃金構造基本統計調査の概要](https://www.mhlw.go.jp/toukei/list/chinginkouzou_b.html)，調査の目的・調査事項：学歴・経験年数・勤続年数と賃金を扱う題材。抽出設計・数値は本教材の仮想設定を用いる。
+3. Wooldridge, Jeffrey M. (2010), *Econometric Analysis of Cross Section and Panel Data*, 2nd ed., MIT Press，第3・4章：漸近理論・線形モデル・OLS。既存講義資料の参照範囲に対応する。
+4. [MIT 14.381 Lecture 2: Limit Theorems (2018)](https://ocw.mit.edu/courses/14-381-statistical-method-in-economics-fall-2018/resources/mit14_381f18_lec2/)，大数の法則・中心極限定理：標本平均の反復生成・標準化。
+5. [MIT 14.382 Lecture 1 (2017)](https://ocw.mit.edu/courses/14-382-econometrics-spring-2017/resources/mit14_382s17_lec1/)，§2–3：最小二乗・射影・補助回帰。
+6. [Chernozhukov, Notes from 14.381](https://ocw.mit.edu/courses/14-382-econometrics-spring-2017/29d3e55c546c9927eff0035735b35aa9_MIT14_382S17_14381notes.pdf)，§1.1–1.2：母集団・標本での最小二乗，条件付き期待値・線形射影。

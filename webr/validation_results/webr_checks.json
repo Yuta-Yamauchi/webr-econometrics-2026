@@ -1,0 +1,163 @@
+{
+  "runtime": "R version 4.6.0 (2026-04-24)",
+  "webr": "0.6.0",
+  "environment": "Node.js (not browser UI)",
+  "results": [
+    {
+      "experiment": "survey",
+      "preset": "base",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "survey",
+      "preset": "response",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "survey",
+      "preset": "large",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "survey",
+      "preset": "no_gap",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "prediction",
+      "preset": "base",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "prediction",
+      "preset": "linear",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "prediction",
+      "preset": "composition",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "prediction",
+      "preset": "large",
+      "status": "passed",
+      "metrics": 11
+    },
+    {
+      "experiment": "auxiliary",
+      "preset": "base",
+      "status": "passed",
+      "metrics": 10
+    },
+    {
+      "experiment": "auxiliary",
+      "preset": "no_income_gap",
+      "status": "passed",
+      "metrics": 10
+    },
+    {
+      "experiment": "auxiliary",
+      "preset": "no_education_gap",
+      "status": "passed",
+      "metrics": 10
+    },
+    {
+      "experiment": "auxiliary",
+      "preset": "large",
+      "status": "passed",
+      "metrics": 10
+    },
+    {
+      "experiment": "auxiliary",
+      "preset": "little_variation",
+      "status": "passed",
+      "metrics": 10
+    },
+    {
+      "experiment": "precision",
+      "preset": "base",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "precision",
+      "preset": "correlated",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "precision",
+      "preset": "large",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "precision",
+      "preset": "small",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "sampling",
+      "preset": "base",
+      "status": "passed",
+      "metrics": 7
+    },
+    {
+      "experiment": "sampling",
+      "preset": "N100",
+      "status": "passed",
+      "metrics": 7
+    },
+    {
+      "experiment": "sampling",
+      "preset": "N400",
+      "status": "passed",
+      "metrics": 7
+    },
+    {
+      "experiment": "sampling",
+      "preset": "normal",
+      "status": "passed",
+      "metrics": 7
+    },
+    {
+      "experiment": "sampling",
+      "preset": "more_repetitions",
+      "status": "passed",
+      "metrics": 7
+    },
+    {
+      "experiment": "asymptotic",
+      "preset": "base",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "asymptotic",
+      "preset": "normal",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "asymptotic",
+      "preset": "small_denominator",
+      "status": "passed",
+      "metrics": 13
+    },
+    {
+      "experiment": "asymptotic",
+      "preset": "correlated",
+      "status": "passed",
+      "metrics": 13
+    }
+  ]
+}
