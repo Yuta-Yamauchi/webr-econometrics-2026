@@ -2,6 +2,10 @@ import katex from './vendor/katex/katex.mjs';
 
 // Display only. The original labels and R code keep their plain-text notation.
 const expressions = new Map([
+  ['a+b(t−20)', String.raw`a+b(t-20)`], ['b', 'b'],
+  ['z=t−20', String.raw`z=t-20`],
+  ['xᵢ=(1,zᵢ,zᵢ²)', String.raw`\mathbf{x}_i=(1,z_i,z_i^2)`],
+  ['xᵢ=(1,zᵢ)', String.raw`\mathbf{x}_i=(1,z_i)`],
   ['m(s)=100+20s+κ(s−12)²', String.raw`m(s)=100+20s+\kappa(s-12)^2`],
   ['x₂ = 5 + 1.5(ρv + √(1 − ρ²)w)', String.raw`x_2=5+1.5\bigl(\rho v+\sqrt{1-\rho^2}\,w\bigr)`],
   ['x₁ = 20 + 6v', String.raw`x_1=20+6v`],

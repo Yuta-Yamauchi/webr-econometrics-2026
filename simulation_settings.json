@@ -160,60 +160,149 @@
   },
   {
     "id": "prediction",
-    "short": "第2回 所得の予測",
-    "title": "教育年数から所得を予測できるか？",
+    "revision": 2,
+    "short": "第2回 電力使用量の予測",
+    "title": "明日の電力使用量をどう予測するか？",
     "course": "第2回・条件付き期待値と線形射影",
-    "file": "r/02_income_prediction.R",
-    "intro": "教育年数から個人の所得を予測する。教育年数別の平均である条件付き期待値（conditional expectation）と，直線による予測である線形射影（linear projection）を比べる。",
+    "file": "r/02_energy_prediction.R",
+    "intro": "一つの建物の電力使用量を予測する。暖房や冷房を使う日を想定し，寒い日と暑い日に使用量が増える仮想モデルを試す。気温を使わない予測から始め，気温別の平均，直線・二次式，観測データからの推定へ進む。",
     "model": [
-      "y_i=100+20s_i+\\kappa(s_i-12)^2+\\varepsilon_i",
-      "s_i\\in\\{9,12,14,16\\}"
+      "y_i=m(t_i)+\\varepsilon_i",
+      "m(t)=80+0.45(t-20)^2",
+      "t_i\\in\\{5,10,15,20,25,30,35\\}",
+      "\\varepsilon_i\\sim U(-\\sqrt{3}\\sigma,\\sqrt{3}\\sigma)"
     ],
-    "assumptions": "sは教育年数，yは年間所得（万円）である。14・16年の人口比率の合計をpとし，9・12年の各比率を(1 − p)/2，14・16年の各比率をp/2とする。ε ∼ N(0, σ²) を教育年数から独立に生成する。",
+    "assumptions": "tは気温（℃），yは1日の電力使用量（kWh）である。各日の気温と誤差を独立に生成する。同じ気温での使用量の標準偏差はσとなる。寒い日（5・10・15℃）と暑い日（25・30・35℃）の割合を変更し，各組の中では3種類の気温を同じ確率とする。20℃の日の割合は20％に固定する。生成式・数値は教材用の仮想設定である。",
     "fields": [
       {
+        "key": "constant",
+        "label": "毎日同じ予測値",
+        "value": 140,
+        "min": 40,
+        "max": 240,
+        "step": "any",
+        "integer": false,
+        "hint": "kWh",
+        "help": "気温を使わず，毎日の使用量をこの値で予測する。全体の平均と，母集団の平均二乗誤差（mean squared error，MSE）を比較する。"
+      },
+      {
+        "key": "temperature",
+        "label": "明日の気温",
+        "value": "20",
+        "options": [
+          [
+            "5",
+            "5℃"
+          ],
+          [
+            "10",
+            "10℃"
+          ],
+          [
+            "15",
+            "15℃"
+          ],
+          [
+            "20",
+            "20℃"
+          ],
+          [
+            "25",
+            "25℃"
+          ],
+          [
+            "30",
+            "30℃"
+          ],
+          [
+            "35",
+            "35℃"
+          ]
+        ],
+        "hint": "",
+        "help": "この気温の日の使用量と，条件付き期待値（conditional expectation）を表示する。"
+      },
+      {
+        "key": "intercept",
+        "label": "20℃での予測値 a",
+        "value": 100,
+        "min": 40,
+        "max": 220,
+        "step": "any",
+        "integer": false,
+        "hint": "kWh",
+        "help": "予測式a+b(t−20)の切片。気温20℃での予測値となる。"
+      },
+      {
+        "key": "slope",
+        "label": "1℃上がるごとの予測値の差 b",
+        "value": 3,
+        "min": -10,
+        "max": 10,
+        "step": "any",
+        "integer": false,
+        "hint": "kWh／℃",
+        "help": "予測式a+b(t−20)の傾き。気温が1℃上がるごとに予測値を何kWh増減させるかを指定する。"
+      },
+      {
+        "key": "climate",
+        "label": "気温の構成",
+        "value": "balanced",
+        "options": [
+          [
+            "balanced",
+            "寒い日40％・穏やかな日20％・暑い日40％"
+          ],
+          [
+            "warm",
+            "寒い日20％・穏やかな日20％・暑い日60％"
+          ],
+          [
+            "cold",
+            "寒い日60％・穏やかな日20％・暑い日20％"
+          ]
+        ],
+        "hint": "",
+        "help": "気温が現れる確率だけを変更する。各気温の平均使用量と，平均からのばらつきは固定する。"
+      },
+      {
+        "key": "degree",
+        "label": "予測に使う説明変数",
+        "value": "1",
+        "options": [
+          [
+            "1",
+            "気温・定数項"
+          ],
+          [
+            "2",
+            "気温・気温の二乗・定数項"
+          ]
+        ],
+        "hint": "",
+        "help": "z=t−20として，行ベクトルxᵢ=(1,zᵢ)またはxᵢ=(1,zᵢ,zᵢ²)を使う。選んだ説明変数の線形結合で，母集団MSEが最小となる係数を求める。"
+      },
+      {
         "key": "N",
-        "label": "標本数 N",
-        "value": 240,
+        "label": "観測日数 N",
+        "value": 120,
         "min": 30,
         "max": 3000,
         "step": 1,
         "integer": true,
-        "hint": "",
-        "help": "調査する人数。このN人の教育年数と所得を使い，OLSで直線を求める。"
-      },
-      {
-        "key": "curvature",
-        "label": "平均関数の曲がり κ",
-        "value": 3,
-        "min": 0,
-        "max": 6,
-        "step": "any",
-        "integer": false,
-        "hint": "",
-        "help": "平均関数m(s)=100+20s+κ(s−12)²の二次項の係数。κ=0なら，教育年数と平均所得は直線の関係になる。"
-      },
-      {
-        "key": "p",
-        "label": "教育年数14・16年の人の割合 p",
-        "value": 0.4,
-        "min": 0.05,
-        "max": 0.95,
-        "step": "any",
-        "integer": false,
-        "hint": "",
-        "help": "教育年数14年・16年の人の合計割合。各p/2とし，9年・12年の人は各(1−p)/2とする。"
+        "hint": "日",
+        "help": "OLS（ordinary least squares）に使う観測日数。同じ気温の構成・標準偏差・シードで日数を増やすと，既存のデータに続きの観測を加える。"
       },
       {
         "key": "sigma",
-        "label": "所得の誤差の標準偏差 σ",
-        "value": 35,
+        "label": "同じ気温での標準偏差 σ",
+        "value": 12,
         "min": 1,
-        "max": 100,
+        "max": 35,
         "step": "any",
         "integer": false,
-        "hint": "万円",
-        "help": "同じ教育年数の人の所得の標準偏差。平均関数m(s)に加える正規誤差εの標準偏差で，単位は万円。"
+        "hint": "kWh",
+        "help": "同じ気温の日に見られる使用量のばらつき。平均0・分散σ²の一様分布から誤差を生成する。"
       },
       {
         "key": "seed",
@@ -224,50 +313,53 @@
         "step": 1,
         "integer": true,
         "hint": "",
-        "help": "乱数シード（random seed）を指定する。同じコード・設定・シードなら，同じデータを再現できる。"
+        "help": "同じ設定・シードで同じ観測データを生成する。母集団の理論値はシードによらない。"
       }
     ],
     "scenarios": [
       {
         "id": "base",
-        "name": "曲線となる平均関数",
-        "description": "κ = 3の条件付き平均と，最もよく当てはまる直線を比較する。",
+        "name": "寒い日と暑い日が同じ割合",
+        "description": "気温の構成を40％・20％・40％とし，直線で予測する。",
         "params": {}
       },
       {
-        "id": "linear",
-        "name": "直線となる平均関数",
-        "description": "κだけを0にする。",
+        "id": "warm",
+        "name": "暑い日の多い気候",
+        "description": "気温ごとの使用量の分布を保ち，暑い日の割合を60％にする。",
         "params": {
-          "curvature": 0
+          "climate": "warm"
         }
       },
       {
-        "id": "composition",
-        "name": "教育年数の構成が異なる地域",
-        "description": "平均関数を保ち，14・16年の人口比率を0.8にする。",
+        "id": "quadratic",
+        "name": "気温の二乗を追加",
+        "description": "暑い日の多い気候で，二次項を含む線形射影を求める。",
         "params": {
-          "p": 0.8
+          "climate": "warm",
+          "degree": "2"
         }
       },
       {
         "id": "large",
-        "name": "同じ母集団・大きな標本",
-        "description": "標本数だけを2000にする。",
+        "name": "観測データを追加",
+        "description": "二次項を使い，300日分のデータからOLSを求める。",
         "params": {
-          "N": 2000
+          "climate": "warm",
+          "degree": "2",
+          "N": 300
         }
       }
     ],
     "comparisons": [
-      "population_slope",
-      "sample_slope",
-      "mse_linear"
+      "mse_chosen_constant",
+      "mse_linear",
+      "mse_projection"
     ],
     "comparisonLabels": [
-      "射影の傾き",
-      "OLSの傾き",
-      "射影の母集団MSE"
+      "一定値での予測のMSE",
+      "直線での予測のMSE",
+      "選んだ説明変数での射影のMSE"
     ]
   },
   {

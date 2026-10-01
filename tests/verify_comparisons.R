@@ -5,9 +5,9 @@ dir.create(out, recursive = TRUE, showWarnings = FALSE)
 source("r/compare_runs.R", encoding = "UTF-8")
 cases <- dget("tests/cases.R")
 defaults <- Filter(function(x) x$preset == "base", cases)
-changes <- list(survey = list(r1 = .2), prediction = list(curvature = 0), auxiliary = list(gamma = 0),
+changes <- list(survey = list(r1 = .2), prediction = list(climate = "warm"), auxiliary = list(gamma = 0),
                 precision = list(rho = .95), sampling = list(N = 100), asymptotic = list(beta2 = 3))
-views <- list(survey = c("composition", "means"), prediction = c("prediction", "mse", "projection_error"),
+views <- list(survey = c("composition", "means"), prediction = c("constant", "constant_risk", "conditional", "manual_line", "projection", "climate", "ols"),
   auxiliary = c("raw", "centered", "coefficients"), precision = c("predictors", "beta1", "beta2", "variance"),
   sampling = c("sample", "means", "standardized"), asymptotic = c("coefficients", "standardized", "influence", "ratio"))
 run_case <- function(case, updates = list()) {

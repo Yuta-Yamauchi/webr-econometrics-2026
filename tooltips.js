@@ -1,5 +1,5 @@
 // Short, contextual help. The R execution path is independent of this module.
-import { renderMathText, renderFieldLabel } from './math.js';
+import { renderMathText, renderFieldLabel } from './math.js?v=20261001-energy';
 let nextId = 0;
 let active = null;
 let hideTimer = null;

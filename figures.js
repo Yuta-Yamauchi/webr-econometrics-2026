@@ -15,21 +15,27 @@ const catalog = {
     }
   },
   prediction: {
-    prediction: {
-      title:'教育年数と所得・予測に使う線',
-      summary:'灰色の点1つが1人の教育年数と所得を表す。点の重なりを避けるため，横位置を少しずらしている。',
-      keys:[key('line blue','青い折れ線','生成式で決まる教育年数別の平均所得。'),key('line orange','橙の直線','母集団で求めた最良の直線予測（線形射影）。'),key('dash ink','黒い破線','今回の標本からOLSで求めた直線。'),key('dot green','緑の水平線','教育年数で分けない母集団全体の平均所得。')]
-    },
-    mse: {
-      title:'三つの予測方法の平均二乗誤差',
-      summary:'棒1本が一つの予測方法を表す。高さは，母集団で計算した「所得−予測値」の二乗の平均（mean squared error，MSE）。',
-      keys:[key('fill blue','青い部分','同じ教育年数の中での所得の分散。'),key('fill orange','橙の部分','教育年数別の平均所得と予測値の差の二乗を，人口比率で平均した量。')]
-    },
-    projection_error: {
-      title:'教育年数別の平均所得と直線予測の差',
-      summary:'棒1本が一つの教育年数を表す。高さは「生成式で決まる平均所得−母集団の線形射影による予測値」。',
-      keys:[key('fill blue','青い棒','その教育年数での予測のずれ。単位は万円。'),key('line ink','0の水平線','平均所得と直線予測が等しい位置。')]
-    }
+    constant: {title:'気温を使わない電力使用量の予測',
+      summary:'横軸は1日の電力使用量。青い線は母集団の確率密度で，ある区間の下の面積が，その範囲の使用量となる確率を表す。',
+      keys:[key('line blue','青い線','全気温を合わせた使用量の分布。'),key('line orange','橙の縦線','入力した毎日の予測値。'),key('dash green','緑の縦の破線','気温で分けない全体の平均。')]},
+    constant_risk: {title:'毎日同じ値で予測する場合の誤差',
+      summary:'横軸は毎日使う予測値。縦軸は「使用量−予測値」の二乗を母集団で平均した値。',
+      keys:[key('line ink','黒い曲線','予測値を変えたときの平均二乗誤差（MSE）。'),key('point orange','橙の点','入力した予測値とそのMSE。'),key('point green','緑の丸','全体の平均を予測値としたときのMSE。')]},
+    conditional: {title:'気温別の電力使用量',
+      summary:'点1つが1日の観測。横軸は気温，縦軸は使用量。点の横位置を少しずらし，重なりを減らしている。',
+      keys:[key('point blue','青い点・大きな丸','選んだ気温の日の観測値・その気温での平均。'),key('line blue','青い線','生成式で決まる気温別の平均。'),key('dash green','緑の水平な破線','全気温を合わせた平均。')]},
+    manual_line: {title:'二つの係数で決まる予測の直線',
+      summary:'点1つが1日を表す。直線の切片は20℃での予測値，傾きは1℃上がるごとの予測値の差。',
+      keys:[key('line blue','青い線','気温別の平均。'),key('line orange','橙の直線','入力した切片と傾きで決まる予測。'),key('dash green','緑の破線','母集団MSEを最小にする直線。')]},
+    projection: {title:'気温別の平均と線形射影',
+      summary:'横軸は気温，縦軸は予測する使用量。どちらの線も，生成式と気温の確率から計算した母集団の値。',
+      keys:[key('line blue','青い線','各気温での平均使用量。'),key('dash green','緑の破線','選んだ説明変数を使い，母集団MSEを最小にする予測。重なる箇所は青と緑が交互に見える。')]},
+    climate: {title:'気温の構成',
+      summary:'棒1本が一つの気温を表す。高さと上の数値は，その気温の日の母集団での割合。',
+      keys:[key('fill blue','青い棒','寒い日（5・10・15℃）。'),key('fill green','緑の棒','穏やかな日（20℃）。'),key('fill orange','橙の棒','暑い日（25・30・35℃）。')]},
+    ols: {title:'観測データから求めた予測',
+      summary:'点1つが1日の気温と使用量。点の横位置を少しずらしている。母集団と標本に，同じ説明変数を使っている。',
+      keys:[key('line green','緑の線','母集団の平均二乗誤差を最小にする線形射影。'),key('dash ink','黒い破線','今回の観測データの残差平方和を最小にするOLS。')]}
   },
   auxiliary: {
     raw: {
@@ -122,7 +128,12 @@ export function figureDescription(kind, view, settings = {}, metrics = {}) {
     result.context = view === 'composition' ? `1回の調査：依頼対象者${n}人・回答者${number(metrics.respondents)}人` : `1回${n}人に依頼・調査を${b}回`;
     if (view === 'means' && Number(metrics.valid_repetitions) !== Number(settings.B)) result.context += `・回答者平均を得た調査${number(metrics.valid_repetitions)}回`;
   } else if (kind === 'prediction') {
-    result.context = view === 'prediction' ? `${n}人の標本と母集団の理論値` : '生成式と人口比率から計算した母集団の理論値';
+    const climates = {balanced:'寒い日40％・暑い日40％', warm:'寒い日20％・暑い日60％', cold:'寒い日60％・暑い日20％'};
+    result.context = `${climates[settings.climate] || ''}・穏やかな日20％`;
+    if (['conditional','manual_line','ols'].includes(view)) result.context += `・${n}日分の仮想データ`;
+    if (view === 'conditional') result.context += `・選んだ気温 ${settings.temperature}℃`;
+    if (view === 'manual_line') result.context += `・切片 ${number(settings.intercept)}・傾き ${number(settings.slope)}`;
+    if (['projection','ols'].includes(view)) result.context += Number(settings.degree) === 2 ? '・二次項あり' : '・二次項なし';
   } else if (kind === 'auxiliary') {
     result.context = `各地域${number(settings.n_group)}人・合計${number(2 * Number(settings.n_group))}人`;
     result.context += view === 'coefficients' ? `の調査を${b}回` : 'の1回の調査';

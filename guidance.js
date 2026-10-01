@@ -1,4 +1,4 @@
-import { figureTitle } from './figures.js';
+import { figureTitle } from './figures.js?v=20261001-energy';
 
 // 比較図の順序は r/compare_runs.R の出力順序と対応する。
 export const guidance = {
@@ -11,11 +11,10 @@ export const guidance = {
   },
   prediction: {
     views: [
-      {id:'prediction'},
-      {id:'mse'},
-      {id:'projection_error'}
+      {id:'constant'}, {id:'constant_risk'}, {id:'conditional'}, {id:'manual_line'},
+      {id:'projection'}, {id:'climate'}, {id:'ols'}
     ],
-    metrics:['population_slope','sample_slope','mse_linear']
+    metrics:['mse_chosen_constant','mse_linear','mse_projection']
   },
   auxiliary: {
     views: [

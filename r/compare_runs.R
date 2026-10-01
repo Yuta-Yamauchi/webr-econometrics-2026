@@ -1,7 +1,7 @@
 # 保存済みのresultを同じ目盛りで描く。標本生成・推定は行わない。
 # source("r/compare_runs.R")
 # comparison <- econometrics_compare("sampling", baseline_result, current_result)
-econometrics_compare <- function(kind, reference, current) {
+econometrics_compare <- function(kind, reference, current, views = NULL) {
   runs <- list(reference, current)
   blue <- "#005A85"; orange <- "#B45A20"; ink <- "#182632"; green <- "#267356"
   setting <- function(r, key) as.character(r$settings$value[match(key, r$settings$setting)])
@@ -44,6 +44,7 @@ econometrics_compare <- function(kind, reference, current) {
       x_min = u[1], x_max = u[2], y_min = u[3], y_max = u[4])
   }
   pair <- function(id, draw) {
+    if (!is.null(views) && !id %in% views) return(invisible(NULL))
     for (i in 1:2) {
       setup(); legend_args <<- NULL
       has_legend <- !id %in% c("predictors", "projection_error")
@@ -107,39 +108,15 @@ econometrics_compare <- function(kind, reference, current) {
       lapply(runs, function(r) c(metric(r, "population_mean"), metric(r, "response_target"))),
       c("母平均", "回答者集団の平均"), c(blue, orange), c(2, 3))
   } else if (kind == "prediction") {
-    xlim <- c(8.5, 16.5)
-    ylim <- extent(lapply(runs, function(r) c(r$data$y, r$groups$conditional_mean, r$groups$projection)), .15)
-    pair("prediction", function(r, i) {
-      # 重なりを避ける横ずれは行番号から決め，乱数を消費しない。
-      offset <- ((seq_len(nrow(r$data)) * 0.61803398875) %% 1 - .5) * .24
-      plot(r$data$s + offset, r$data$y, pch = 16, col = adjustcolor(ink, .25),
-        xlim = xlim, ylim = ylim, xaxt = "n", xlab = "教育年数（年）", ylab = "年間所得（万円）")
-      axis(1, at = r$groups$s)
-      lines(r$groups$s, r$groups$conditional_mean, col = blue, type = "b", pch = 16, lwd = 2.5)
-      abline(metric(r, "population_intercept"), metric(r, "population_slope"), col = orange, lwd = 2.5)
-      abline(metric(r, "sample_intercept"), metric(r, "sample_slope"), col = ink, lty = 2, lwd = 2)
-      abline(h = metric(r, "population_mean"), col = green, lty = 3, lwd = 2)
-      legend("topleft", c("条件付き期待値", "線形射影", "標本のOLS", "母平均"), col = c(blue, orange, ink, green),
-        lty = c(1, 1, 2, 3), lwd = 2, bty = "n", cex = .95)
-    })
-    mse <- lapply(runs, function(r) vapply(c("mse_constant", "mse_linear", "mse_conditional"), function(k) metric(r, k), numeric(1)))
-    ylim <- c(0, max(unlist(mse)) * 1.32)
-    pair("mse", function(r, i) {
-      par(mar = c(4.8, 6, 2.6, 1))
-      s2 <- number(r, "sigma")^2
-      at <- barplot(rbind(rep(s2, 3), pmax(mse[[i]] - s2, 0)), col = c(blue, orange), border = NA,
-        axisnames = FALSE,
-        ylim = ylim, ylab = "平均二乗誤差（万円²）")
-      mtext(c("母平均", "線形射影", "条件付き期待値"), side = 1, at = at, line = 1, cex = .8)
-      legend("topright", c("誤差の分散", "平均関数とのずれ"), fill = c(blue, orange), bty = "n", cex = .95)
-    })
-    lim <- max(1, abs(unlist(lapply(runs, function(r) r$groups$conditional_projection_error)))) * 1.2
-    pair("projection_error", function(r, i) {
-      par(mar = c(4.8, 6, 2.6, 1))
-      barplot(r$groups$conditional_projection_error, names.arg = r$groups$s, col = blue, border = NA,
-        ylim = c(-lim, lim), xlab = "教育年数（年）", ylab = "平均所得−予測値（万円）")
-      abline(h = 0, col = ink)
-    })
+    if (!exists("energy_plot",mode="function")) source("r/energy_plots.R",encoding="UTF-8")
+    selected <- if (is.null(views)) energy_views else energy_views[energy_views %in% views]
+    for (id in selected) {
+      limits <- energy_limits(runs,id)
+      for (i in 1:2) {
+        u <- energy_plot(runs[[i]],id,limits)
+        axes[[length(axes)+1L]] <- data.frame(view=id,side=i,x_min=u[1],x_max=u[2],y_min=u[3],y_max=u[4])
+      }
+    }
   } else if (kind == "auxiliary") {
     for (centered in c(FALSE, TRUE)) {
       xkey <- if (centered) "dr" else "d"; ykey <- if (centered) "yr" else "y"

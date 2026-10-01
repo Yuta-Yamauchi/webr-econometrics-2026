@@ -89,6 +89,9 @@ p { margin-bottom: 16px; }
 .journey-cell:has(.journey-run) { border-top-color: var(--accent); }
 .journey-field { max-width: 480px; margin: 22px 0; }
 .journey-field label { font-weight: 600; }
+.journey-fields { display: flex; flex-wrap: wrap; gap: 0 24px; }
+.journey-fields .journey-field { flex: 1 1 300px; min-width: 0; }
+.journey-fields select { max-width: 100%; }
 .journey-form > button { margin: 6px 0 12px; }
 .journey-output { margin-top: 24px; scroll-margin-top: 24px; }
 .journey-output > h3 { margin-top: 22px; }

@@ -1,10 +1,10 @@
-import { lessons } from './lessons.js';
-import { addFieldHelp, addButtonHelp, dismissTooltips } from './tooltips.js';
-import { renderMathText, renderFieldLabel, renderModel } from './math.js';
-import { guidance, parameterChanges, changeKind } from './guidance.js';
-import { journeys, journeyParameters } from './journeys.js';
-import { figureDescription } from './figures.js';
-import { preparation } from './startup.js';
+import { lessons } from './lessons.js?v=20261001-energy';
+import { addFieldHelp, addButtonHelp, dismissTooltips } from './tooltips.js?v=20261001-energy';
+import { renderMathText, renderFieldLabel, renderModel } from './math.js?v=20261001-energy';
+import { guidance, parameterChanges, changeKind } from './guidance.js?v=20261001-energy';
+import { journeys, journeyParameters, journeyStep, journeyKeys } from './journeys.js?v=20261001-energy';
+import { figureDescription } from './figures.js?v=20261001-energy';
+import { preparation } from './startup.js?v=20261001-energy';
 
 const $ = id => document.getElementById(id);
 const STORAGE = 'econometrics-webr-2026-v2';
@@ -14,7 +14,8 @@ let stored = {};
 try { stored = JSON.parse(localStorage.getItem(STORAGE) || '{}'); } catch { /* Fresh session. */ }
 const states = new Map(lessons.map(lesson => {
   const defaults = Object.fromEntries(lesson.fields.map(f => [f.key, f.value]));
-  const saved = stored[lesson.id] || {};
+  const candidate = stored[lesson.id] || {};
+  const saved = (candidate.revision || 1) === (lesson.revision || 1) ? candidate : {};
   return [lesson.id, {
     params: {...defaults, ...(saved.params || {})}, draft: typeof saved.draft === 'string' ? saved.draft : null,
     scenario: saved.scenario || 'base', mode: saved.mode === 'code' ? 'code' : 'settings',
@@ -31,7 +32,7 @@ const downloads = [];
 
 function persist() {
   const data = Object.fromEntries([...states].map(([id, s]) => [id, {
-    params:s.params, draft:s.draft, scenario:s.scenario, mode:s.mode
+    revision:lessons.find(item => item.id === id).revision || 1, params:s.params, draft:s.draft, scenario:s.scenario, mode:s.mode
   }]));
   try { localStorage.setItem(STORAGE, JSON.stringify(data)); }
   catch { /* The running experiment also works with storage disabled. */ }
@@ -65,7 +66,7 @@ function setBusy(value) {
   $('restore-baseline').disabled = value || !state.baseline;
   for (const button of document.querySelectorAll('.journey-run')) {
     button.disabled = value || !ready || !loaded;
-    button.textContent = value ? '計算中…' : waiting ? waitingLabel : Number(button.dataset.step) === 0 ? '最初の調査を実行' : 'この条件で実行';
+    button.textContent = value ? '計算中…' : waiting ? waitingLabel : button.dataset.label;
   }
   for (const input of document.querySelectorAll('.journey-input')) input.disabled = value;
 }
@@ -77,7 +78,8 @@ function rValue(value, field) {
 function makeCode() {
   const state = states.get(lesson.id);
   const settings = lesson.fields.map(f => `${f.key} <- ${rValue(state.params[f.key], f)}  # ${f.label}`).join('\n');
-  return templates.get(lesson.id).replace(/# SETTINGS_BEGIN[\s\S]*?# SETTINGS_END/, `# SETTINGS_BEGIN\n${settings}\n# SETTINGS_END`);
+  const code = templates.get(lesson.id).replace(/# SETTINGS_BEGIN[\s\S]*?# SETTINGS_END/, `# SETTINGS_BEGIN\n${settings}\n# SETTINGS_END`);
+  return lesson.id === 'prediction' ? code.replace('if (!exists("energy_plot", mode="function")) source("r/energy_plots.R", encoding="UTF-8")', () => templates.get('energyPlots')) : code;
 }
 function refreshCodePreview() {
   $('generated-code').textContent = loaded ? makeCode() : '教材の読み込み中';
@@ -304,9 +306,10 @@ function renderJourney() {
   const complete = state.journey.length;
   $('journey').replaceChildren();
   for (let index = 0; index <= Math.min(complete, config.steps.length); index++) {
-    const step = index === 0 ? {title:config.startTitle, text:config.start, view:config.view} : config.steps[index - 1];
+    const step = journeyStep(lesson.id,index);
     const record = state.journey[index];
     const reference = index ? state.journey[step.reference] : null;
+    const paired = reference && !step.single;
     const section = document.createElement('section'); section.className = 'notebook-cell journey-cell'; section.id = `journey-${index}`;
     const number = document.createElement('span'); number.className = 'cell-index'; number.textContent = String(index + 1).padStart(2, '0'); number.setAttribute('aria-hidden', 'true');
     const body = document.createElement('div'); body.className = 'cell-body';
@@ -314,9 +317,9 @@ function renderJourney() {
     section.setAttribute('aria-labelledby', title.id);
     const text = document.createElement('p'); renderMathText(text, step.text);
     body.append(title, text); section.append(number, body);
-    if (index) {
+    if (paired) {
       const from = document.createElement('p'); from.className = 'help';
-      from.textContent = `比較相手：${String(step.reference + 1).padStart(2, '0')}の調査`;
+      from.textContent = `比較相手：${String(step.reference + 1).padStart(2, '0')}の${config.recordName || '調査'}`;
       body.append(from);
     }
     if (record) {
@@ -328,17 +331,17 @@ function renderJourney() {
       }
       const addView = (viewId, target) => {
         const view = guidance[lesson.id].views.find(v => v.id === viewId);
-        const offset = guidance[lesson.id].views.indexOf(view) * 2;
+        const offset = comparisonOffset(record,viewId);
         if (!record.comparison) return;
         const description = describeRunFigure(record, viewId);
-        const before = reference ? describeRunFigure(reference, viewId) : null;
+        const before = paired ? describeRunFigure(reference, viewId) : null;
         const heading = document.createElement('h3'); heading.textContent = description.title; target.append(heading);
         target.append(figureSummary(description));
-        const grid = document.createElement('div'); grid.className = reference ? 'comparison-grid' : 'journey-single';
-        if (reference) grid.append(imageFigure(record.comparison.images[offset], `変更前 · ${String(step.reference + 1).padStart(2, '0')}`, `${record.filePrefix}_before_${view.id}.png`, 'comparison-figure', before.summary, false, before.context));
-        grid.append(imageFigure(record.comparison.images[offset + 1], reference ? `変更後 · ${String(index + 1).padStart(2, '0')}` : '最初の調査', `${record.filePrefix}_after_${view.id}.png`, reference ? 'comparison-figure is-current' : 'comparison-figure', description.summary, false, description.context));
+        const grid = document.createElement('div'); grid.className = paired ? 'comparison-grid' : 'journey-single';
+        if (paired) grid.append(imageFigure(record.comparison.images[offset], `変更前 · ${String(step.reference + 1).padStart(2, '0')}`, `${record.filePrefix}_before_${view.id}.png`, 'comparison-figure', before.summary, false, before.context));
+        grid.append(imageFigure(record.comparison.images[offset + 1], paired ? `変更後 · ${String(index + 1).padStart(2, '0')}` : `今回の${config.recordName || '調査'}`, `${record.filePrefix}_after_${view.id}.png`, paired ? 'comparison-figure is-current' : 'comparison-figure', description.summary, false, description.context));
         target.append(grid, figureKeys(description, before));
-        if (reference) {
+        if (paired) {
           const scale = document.createElement('p'); scale.className = 'help';
           scale.textContent = record.comparison.histogramViews.includes(view.id) ? '軸の目盛りとヒストグラムの区間をそろえている。' : '軸の目盛りをそろえている。'; target.append(scale);
         }
@@ -349,9 +352,17 @@ function renderJourney() {
         record.images.forEach((picture, i) => output.append(imageFigure(picture, record.plotTitles[i] || '実行結果', `${record.filePrefix}_figure${i + 1}.png`, 'plot-card', record.plotNotes[i], false)));
       }
       if (record.comparison && step.extraView) {
-        const extra = document.createElement('details'), summary = document.createElement('summary');
-        summary.textContent = guidance[lesson.id].views.find(v => v.id === step.extraView).title;
-        extra.append(summary); addView(step.extraView, extra); output.append(extra);
+        const extra = document.createElement(step.extraInline ? 'div' : 'details');
+        if (!step.extraInline) {
+          const summary = document.createElement('summary'); summary.textContent = guidance[lesson.id].views.find(v => v.id === step.extraView).title; extra.append(summary);
+        }
+        addView(step.extraView, extra); output.append(extra);
+      }
+      if (step.metrics) output.append(makeTable(['母集団で計算した量','値'], step.metrics.map(key => { const m = record.metrics.find(item => item.key === key); return [m.label,formatNumber(m.value)]; }), [1]));
+      if (lesson.id === 'prediction') {
+        const retry = document.createElement('details'), label = document.createElement('summary');
+        label.textContent = 'この段階の設定を変更';
+        retry.append(label, journeyForm(index,true)); output.append(retry);
       }
       const saved = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = '設定・数値・保存'; saved.append(summary);
       saved.append(makeTable(['設定','値'], lesson.fields.map(f => [f.label, fieldValue(f, record.params[f.key])]), [1]));
@@ -363,33 +374,14 @@ function renderJourney() {
       };
       file('Rコード', `${record.filePrefix}.R`, record.code, 'text/plain;charset=utf-8');
       for (const [key, label] of [['data','標本のCSV'], ['repetitions','反復結果のCSV'], ['metrics','計算結果のCSV']]) if (record.csv[key]) file(label, `${record.filePrefix}_${key}.csv`, '\uFEFF' + record.csv[key], 'text/csv;charset=utf-8');
-      const offset = guidance[lesson.id].views.findIndex(v => v.id === step.view) * 2;
-      if (record.comparison) for (const side of reference ? [0, 1] : [1]) {
+      const offset = comparisonOffset(record,step.view);
+      if (record.comparison) for (const side of paired ? [0, 1] : [1]) {
         const a = document.createElement('a'); a.textContent = side ? '表示中の図のPNG' : '変更前の図のPNG';
         a.href = record.comparison.images[offset + side].url; a.download = `${record.filePrefix}_${side ? 'after' : 'before'}_${step.view}.png`; links.append(a);
       }
       saved.append(links); output.append(saved); body.append(output);
     } else {
-      const form = document.createElement('form'); form.className = 'journey-form';
-      if (index) {
-        const field = lesson.fields.find(f => f.key === step.key);
-        const box = document.createElement('div'); box.className = 'field journey-field';
-        const label = document.createElement('label'); label.htmlFor = `journey-value-${index}`; label.textContent = field.label;
-        const input = document.createElement(field.options ? 'select' : 'input'); input.id = label.htmlFor; input.className = 'journey-input';
-        if (field.options) for (const [value, name] of field.options) input.add(new Option(name, value));
-        else { input.type = 'number'; input.min = field.min; input.max = field.max; input.step = field.step; input.required = true; }
-        input.value = state.journeyDrafts[index] ?? step.value;
-        input.addEventListener('input', () => { state.journeyDrafts[index] = input.value; });
-        const before = document.createElement('p'); before.className = 'help'; before.id = `journey-before-${index}`; before.textContent = `変更前：${fieldValue(field, reference.params[step.key])}${field.hint && ['年','万円','万円／年'].includes(field.hint) ? ` ${field.hint}` : ''}`;
-        input.setAttribute('aria-describedby', before.id);
-        box.append(label, input, before); addFieldHelp(label, input, field.help); renderFieldLabel(label, field.label); form.append(box);
-      }
-      const button = document.createElement('button'); button.type = 'submit'; button.className = 'primary journey-run'; button.dataset.step = index;
-      button.textContent = index === 0 ? '最初の調査を実行' : 'この条件で実行';
-      const error = document.createElement('p'); error.id = `journey-error-${index}`; error.className = 'error'; error.hidden = true; error.setAttribute('role','alert');
-      form.append(button, error);
-      form.addEventListener('submit', event => { event.preventDefault(); runJourney(index); });
-      body.append(form);
+      body.append(journeyForm(index));
     }
     $('journey').append(section);
   }
@@ -402,21 +394,56 @@ function renderJourney() {
   setBusy(busy);
 }
 
+function journeyForm(index, completed = false) {
+  const state = states.get(lesson.id), config = journeys[lesson.id], step = journeyStep(lesson.id,index);
+  const reference = index ? state.journey[step.reference] : null;
+  const values = completed ? state.journey[index].params : journeyParameters(lesson,index,state.journey);
+  const form = document.createElement('form'); form.className = 'journey-form';
+  const fields = document.createElement('div'); fields.className = 'journey-fields';
+  for (const key of journeyKeys(step)) {
+    const field = lesson.fields.find(f => f.key === key);
+    const box = document.createElement('div'); box.className = 'field journey-field';
+    const label = document.createElement('label'); label.htmlFor = `journey-value-${index}-${key}`; label.textContent = field.label;
+    const input = document.createElement(field.options ? 'select' : 'input'); input.id = label.htmlFor; input.className = 'journey-input';
+    if (field.options) for (const [value,name] of field.options) input.add(new Option(name,value));
+    else { input.type = 'number'; input.min = field.min; input.max = field.max; input.step = field.step; input.required = true; }
+    input.value = state.journeyDrafts[index]?.[key] ?? values[key];
+    input.addEventListener('input', () => { (state.journeyDrafts[index] ||= {})[key] = input.value; });
+    box.append(label,input);
+    if (reference) {
+      const before = document.createElement('p'); before.className = 'help'; before.id = `journey-before-${index}-${key}`;
+      before.textContent = `変更前：${fieldValue(field,reference.params[key])}${field.hint ? ' '+field.hint : ''}`;
+      input.setAttribute('aria-describedby',before.id); box.append(before);
+    } else if (field.hint) { const unit = document.createElement('span'); unit.className = 'help'; unit.textContent = field.hint; box.append(unit); }
+    addFieldHelp(label,input,field.help); renderFieldLabel(label,field.label); fields.append(box);
+  }
+  const button = document.createElement('button'); button.type = 'submit'; button.className = 'primary journey-run'; button.dataset.step = index;
+  button.dataset.label = completed ? 'この設定で再計算' : config.runLabel || (index === 0 ? '最初の調査を実行' : 'この条件で実行');
+  button.textContent = button.dataset.label;
+  const error = document.createElement('p'); error.id = `journey-error-${index}`; error.className = 'error'; error.hidden = true; error.setAttribute('role','alert');
+  form.append(fields,button,error);
+  form.addEventListener('submit', event => { event.preventDefault(); runJourney(index); });
+  return form;
+}
 async function runJourney(index) {
   if (!ready || !loaded || busy) return;
   const state = states.get(lesson.id);
-  if (index !== state.journey.length) return;
-  const step = index ? journeys[lesson.id].steps[index - 1] : null;
-  const input = index ? $(`journey-value-${index}`) : null;
-  if (input && !input.reportValidity()) return;
-  const field = step ? lesson.fields.find(f => f.key === step.key) : null;
-  const value = input ? field.options ? input.value : Number(input.value) : undefined;
-  state.params = journeyParameters(lesson, index, state.journey, value);
-  state.view = step?.view || journeys[lesson.id].view;
+  if (index > state.journey.length) return;
+  const step = journeyStep(lesson.id,index), values = {};
+  for (const key of journeyKeys(step)) {
+    const input = $(`journey-value-${index}-${key}`), field = lesson.fields.find(f => f.key === key);
+    if (!input.reportValidity()) return;
+    values[key] = field.options ? input.value : Number(input.value);
+  }
+  state.params = journeyParameters(lesson,index,state.journey,values);
+  state.view = step.view;
   for (const f of lesson.fields) $(`param-${f.key}`).value = state.params[f.key];
   markCustom(); setMode('settings');
   $(`journey-error-${index}`).hidden = true;
   await run({journeyIndex:index});
+}
+function comparisonOffset(record,view) {
+  return (record.comparison?.viewIds || guidance[record.lessonId].views.map(item => item.id)).indexOf(view)*2;
 }
 
 function savedImages(images) {
@@ -483,14 +510,15 @@ function renderComparison() {
   const config = guidance[lesson.id];
   $('comparison-kind').textContent = `変更前：実行 ${base.number} → 変更後：実行 ${record.number} · ${changeKind(lesson.fields, base.params, record.params)}`;
   fillChanges($('comparison-changes'), base.params, record.params);
-  const view = config.views.find(v => v.id === state.view) || config.views[0];
+  const available = config.views.filter(v => !record.comparison.viewIds || record.comparison.viewIds.includes(v.id));
+  const view = available.find(v => v.id === state.view) || available[0];
   $('comparison-view').value = view.id;
   const description = describeRunFigure(record, view.id), before = describeRunFigure(base, view.id);
   $('comparison-focus').replaceChildren(figureSummary(description));
   $('comparison-keys').replaceChildren(figureKeys(description, before));
   $('comparison-scale').textContent = record.comparison.histogramViews.includes(view.id)
     ? '共通の目盛り・共通のヒストグラム区間' : '横軸・縦軸は共通の目盛り';
-  const index = config.views.findIndex(v => v.id === view.id) * 2;
+  const index = comparisonOffset(record,view.id);
   $('comparison-plots').replaceChildren(
     imageFigure(record.comparison.images[index], `変更前 · 実行 ${base.number}`, `${record.filePrefix}_reference_${view.id}.png`, 'comparison-figure', before.summary, true, before.context),
     imageFigure(record.comparison.images[index + 1], `変更後 · 実行 ${record.number}`, `${record.filePrefix}_current_${view.id}.png`, 'comparison-figure is-current', description.summary, true, description.context)
@@ -506,7 +534,7 @@ function renderComparison() {
 function renderResults() {
   clearResults();
   const state = states.get(lesson.id), record = state.latest;
-  $('comparison-view').replaceChildren(...guidance[lesson.id].views.map(v => new Option(v.title, v.id)));
+  $('comparison-view').replaceChildren(...guidance[lesson.id].views.filter(v => !record?.comparison?.viewIds || record.comparison.viewIds.includes(v.id)).map(v => new Option(v.title, v.id)));
   if (!record) return;
   lastRun = record;
   if (record.metrics.length) {
@@ -530,18 +558,21 @@ function renderResults() {
   $('baseline-status').textContent = state.baseline ? `比較相手：実行 ${state.baseline.number}` : '';
   renderComparison();
 }
-async function compareRuns(record, reference, shelter, localEngine, token) {
+async function compareRuns(record, reference, shelter, localEngine, token, requestedViews = null) {
   const asR = run => 'list(' + ['settings','metrics','data','repetitions','groups'].map(key =>
     `${key}=${run.csv[key] ? `read.csv(text=${JSON.stringify(run.csv[key])},check.names=FALSE,stringsAsFactors=FALSE)` : 'data.frame()'}`).join(',') + ')';
   const env = await shelter.evalR('new.env(parent = globalenv())');
-  const code = `${comparisonTemplate}\n.comparison <- econometrics_compare(${JSON.stringify(record.lessonId)},${asR(reference)},${asR(record)})`;
+  const viewIds = guidance[record.lessonId].views.filter(v => !requestedViews || requestedViews.includes(v.id)).map(v => v.id);
+  const selected = requestedViews ? `c(${viewIds.map(id => JSON.stringify(id)).join(',')})` : 'NULL';
+  const plotting = record.lessonId === 'prediction' ? templates.get('energyPlots') : '';
+  const code = `${plotting}\n${comparisonTemplate}\n.comparison <- econometrics_compare(${JSON.stringify(record.lessonId)},${asR(reference)},${asR(record)},views=${selected})`;
   const capture = await shelter.captureR(code, {env, captureGraphics:{width:720,height:700,pointsize:30,bg:'white'}, captureStreams:true,captureConditions:true,throwJsException:true});
   if (token !== generation) { capture.images.forEach(image => image.close()); return null; }
   const images = savedImages(capture.images);
-  if (images.length !== guidance[record.lessonId].views.length * 2) throw new Error('比較図の数が設定と一致しない。');
+  if (images.length !== viewIds.length * 2) throw new Error('比較図の数が設定と一致しない。');
   const axesCSV = await localEngine.evalRString('paste(capture.output(write.csv(.comparison$axes,row.names=FALSE)),collapse="\\n")', {env});
   const histogramViews = await localEngine.evalRRaw('as.character(names(.comparison$breaks))', 'string[]', {env});
-  return {referenceNumber:reference.number, images, axesCSV, histogramViews};
+  return {referenceNumber:reference.number, images, axesCSV, histogramViews, viewIds};
 }
 
 async function startEngine(preserveElapsed = false) {
@@ -558,9 +589,9 @@ async function startEngine(preserveElapsed = false) {
   try {
     if (location.protocol === 'file:') throw new Error('serve.pyを起動し，http://127.0.0.1:8765/ から開く。起動手順はREADME.mdを参照。');
     if (!loaded) {
-      const files = [...lessons.map(item => [item.id, item.file]), ['comparison', 'r/compare_runs.R']];
+      const files = [...lessons.map(item => [item.id, item.file]), ['comparison', 'r/compare_runs.R'], ['energyPlots','r/energy_plots.R']];
       const texts = await Promise.all(files.map(async ([id, file]) => {
-        const response = await fetch(file, {signal: controller.signal});
+        const response = await fetch(`${file}?v=20261001-energy`, {signal: controller.signal});
         if (!response.ok) throw new Error(`${file}: HTTP ${response.status}`);
         return [id, (await response.text()).replace(/\r\n?/g, '\n')];
       }));
@@ -613,7 +644,8 @@ async function run(options = {}) {
   try {
     shelter = await new localEngine.Shelter();
     const env = await shelter.evalR('new.env(parent = globalenv())');
-    const capture = await shelter.captureR(code, {
+    const captureCode = guided && currentLesson.id === 'prediction' ? `.energy_draw <- FALSE\n${code}` : code;
+    const capture = await shelter.captureR(captureCode, {
       env, captureGraphics:{width:960, height:540, pointsize:20, bg:'white'},
       captureStreams:true, captureConditions:true, withAutoprint:true, throwJsException:true
     });
@@ -649,11 +681,15 @@ async function run(options = {}) {
     };
     if (mode === 'settings' && (reference || guided)) {
       status('図を作成中…');
-      try { record.comparison = await compareRuns(record, reference || record, shelter, localEngine, token); }
+      try {
+        const step = guided && currentLesson.id === 'prediction' ? journeyStep(currentLesson.id,options.journeyIndex) : null;
+        const requested = step ? [step.view,step.extraView].filter(Boolean) : null;
+        record.comparison = await compareRuns(record,reference || record,shelter,localEngine,token,requested);
+      }
       catch (error) { record.comparisonError = String(error.message || error); }
     }
     if (token !== generation) return;
-    if (guided) { state.baseline = reference || record; state.journey.push(record); }
+    if (guided) { state.baseline = reference || record; state.journey.splice(options.journeyIndex,Infinity,record); }
     else if (mode === 'settings' && !state.baseline) state.baseline = record;
     state.latest = record;
     // 履歴は数値・設定だけを持ち，図は基準と今回の結果に保持する。

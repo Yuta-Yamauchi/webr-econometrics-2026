@@ -39,9 +39,12 @@ for (case in cases) {
     stopifnot(nrow(r$data) == pp$N, nrow(r$repetitions) == pp$B)
   } else if (case$id == "prediction") {
     near(e$orthogonality, 0, 1e-7)
-    near(e$beta_ols, coef(lm(y ~ s, data = r$data)), 1e-7)
-    stopifnot(e$mse[1] >= e$mse[2] - 1e-8, e$mse[2] >= e$mse[3] - 1e-8)
-    if (pp$curvature == 0) near(e$beta_projection, c(100, 20))
+    fit <- if (as.integer(pp$degree)==1) lm(y ~ z,data=r$data) else lm(y ~ z + I(z^2),data=r$data)
+    near(e$beta_ols, coef(fit), 1e-7)
+    stopifnot(metric(e,"mse_mean") >= metric(e,"mse_linear")-1e-8,
+              metric(e,"mse_linear") >= metric(e,"mse_projection")-1e-8,
+              metric(e,"mse_projection") >= pp$sigma^2-1e-8)
+    if (as.integer(pp$degree)==2) { near(e$beta_projection,c(80,0,.45)); near(metric(e,"mse_projection"),pp$sigma^2) }
   } else if (case$id == "auxiliary") {
     near(metric(e, "fwl_gap"), 0)
     for (a in 0:1) {
